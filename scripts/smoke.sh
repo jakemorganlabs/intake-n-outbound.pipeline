@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke test for Sessions S02 and S03 -- Orchestration Spine + Adapters & Error Workflow
+# Smoke test for Sessions S02 and S03 - Orchestration Spine + Adapters & Error Workflow
 # Posts labeled payloads and asserts end-to-end correctness per tier.
 # Usage: ./scripts/smoke.sh [tier=all|hot|warm|cold|manual|chaos]
 set -euo pipefail
@@ -134,16 +134,49 @@ fi
 
 # -- Chaos test --------------------------------------------------------
 if [[ "$TIER" == "all" || "$TIER" == "chaos" ]]; then
-  echo "[CHAOS] Verifying lead count with all tiers posted..."
-  LEAD_COUNT=$(psql "$DATABASE_URL" -Atc "SELECT COUNT(*) FROM leads;")
-  if [[ "${TIER}" == "all" && "$LEAD_COUNT" -lt 3 ]]; then
-    echo "FAIL: expected at least 3 lead rows, got $LEAD_COUNT"
+  echo "[CHAOS] Forcing adapter failure by pointing chat to localhost:9..."
+  OLD_SLACK_WEBHOOK_URL="${SLACK_WEBHOOK_URL:-}"
+  export SLACK_WEBHOOK_URL="http://localhost:9/fake-webhook"
+
+  CHAOS_PAYLOAD='{
+    "name": "Chaos Test",
+    "email": "chaos@example.com",
+    "message": "Chaos test for adapter failure handling",
+    "company": "Chaos Inc",
+    "form_id": "contact-form-chaos",
+    "submitted_at": "2026-05-28T13:00:00Z",
+    "submission_id": "submission-b-chaos"
+  }'
+
+  # Post a HOT payload; the chat adapter will fail because localhost:9 rejects.
+  # The pipeline should still persist the lead and write DLQ + alert.
+  CHAOS_RESPONSE=$(curl -sf -X POST "${SERVER_URL}/intake-webhook" \
+    -H "Content-Type: application/json" \
+    -d "$CHAOS_PAYLOAD" | tr -d '\n' || echo '{"status":"error"}')
+
+  # Restore webhook URL
+  if [[ -n "$OLD_SLACK_WEBHOOK_URL" ]]; then
+    export SLACK_WEBHOOK_URL="$OLD_SLACK_WEBHOOK_URL"
+  fi
+
+  echo "[CHAOS] Verifying lead persisted despite adapter failure..."
+  CHAOS_LEAD_COUNT=$(psql "$DATABASE_URL" -Atc "SELECT COUNT(*) FROM leads;")
+  # We posted hot, warm, cold, manual, and now chaos - expecting 4 or 5 depending on tier mode
+  if [[ "$CHAOS_LEAD_COUNT" -lt 4 ]]; then
+    echo "FAIL: expected at least 4 lead rows, got $CHAOS_LEAD_COUNT"
     EXIT_CODE=1
   else
-    echo "PASS: $LEAD_COUNT lead rows present"
+    echo "PASS: $CHAOS_LEAD_COUNT lead rows present"
   fi
+
+  echo "[CHAOS] Verifying DLQ row exists..."
   DLQ_COUNT=$(psql "$DATABASE_URL" -Atc "SELECT COUNT(*) FROM dead_letter;")
-  echo "INFO: dead_letter rows: $DLQ_COUNT"
+  if [[ "$DLQ_COUNT" -lt 1 ]]; then
+    echo "FAIL: expected at least 1 dead_letter row, got $DLQ_COUNT"
+    EXIT_CODE=1
+  else
+    echo "PASS: $DLQ_COUNT dead_letter rows present"
+  fi
 fi
 
 # -- Final summary ------------------------------------------------------

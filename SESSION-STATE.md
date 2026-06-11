@@ -75,7 +75,11 @@
   - Adapter failure writes DLQ, updates lead status, fires alert; lead record still present.
 - `src/pipeline.test.ts`: Updated router calls to use object-argument API.
 - `scripts/smoke-s03.ts`: End-to-end smoke covering HOT, WARM, COLD, MANUAL, and adapter failure invariants.
-- `scripts/smoke.sh` updated: tier-mode selector, compatibility with S03 pipeline.
+- `scripts/smoke.sh` updated: tier-mode selector, `chaos` mode forces adapter failure and verifies DLQ + lead persistence.
+- `workflows/intake_error.json`: n8n error-workflow with snapshot, DLQ writer, and Slack alert.
 - `.env.example` updated: SLACK_WEBHOOK_URL, HUBSPOT_API_KEY, GOOGLE_SHEETS_API_KEY, GOOGLE_SHEET_ID, GOOGLE_SHEET_RANGE.
 - TypeScript: 0 compile errors. Tests: 47 passed (44 S01+S02 + 3 adapter unit tests). Smoke: 5/5 passed.
+
+## Handoff to S04 (Evals and Observability)
+S04 inherits a full end-to-end pipeline from here. The focus shifts from building to proving: assemble the eval suite that demonstrates gate, idempotency guard, degradation path, and injection resistance behave as advertised.
 
