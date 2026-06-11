@@ -1,0 +1,78 @@
+{
+  "name": "Intake Error -- Session S03",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-error",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Error Workflow -- Global Dead-Letter + Alert (S03, 201, 202)\n// Receives the error payload from any failed execution of the main workflow.\n\nconst error = $input.first().json;\n\n// Snapshot what we can from the partial execution\nconst runId = error.execution?.id || 'unknown';\nconst workflowId = error.workflow?.id || 'unknown';\nconst errorMessage = error.error?.message || String(error.error || 'unknown');\nconst errorNode = error.error?.node?.name || 'unknown';\nconst lastData = error.execution?.lastNodeExecuted || {};\nconst leadSnapshot = lastData.json || {};\n\n// Derive lead idempotency key from snapshot if present\nconst dedupeKey = leadSnapshot.idempotency_key || leadSnapshot.dedupe || null;\n\nconst output = {\n  error: {\n    message: errorMessage,\n    node: errorNode,\n    run_id: runId,\n    workflow_id: workflowId\n  },\n  lead_snapshot: {\n    dedupe_key: dedupeKey,\n    name: leadSnapshot.name || null,\n    email: leadSnapshot.email || null,\n    raw: JSON.stringify(leadSnapshot).slice(0, 2000)\n  },\n  stage: errorNode,\n  alerted_at: new Date().toISOString()\n};\n\nreturn [{ json: output }];"
+      },
+      "id": "node-error-snapshot",
+      "name": "Snapshot Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Dead-Letter Writer (201, 202)\n// Writes a row to the dead_letter table with full context.\n\nconst { Pool } = require('pg');\nconst DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/intake_pipeline';\nconst pool = new Pool({ connectionString: DATABASE_URL, connectionTimeoutMillis: 5000 });\n\nconst input = $input.first().json;\nconst client = await pool.connect();\n\ntry {\n  await client.query('BEGIN');\n  const sql = `INSERT INTO dead_letter\n    (idempotency_key, stage, error_message, lead_snapshot, run_id, created_at)\n    VALUES ($1, $2, $3, $4, $5, NOW())\n    RETURNING id`;\n  const values = [\n    input.lead_snapshot?.dedupe_key || 'unknown',\n    input.stage || 'unknown',\n    input.error?.message || 'unknown',\n    JSON.stringify(input.lead_snapshot || {}),\n    input.error?.run_id || 'unknown'\n  ];\n  const result = await client.query(sql, values);\n  await client.query('COMMIT');\n  input.dlq_id = result.rows[0]?.id;\n} catch (dbErr) {\n  input.errors = input.errors || [];\n  input.errors.push({ stage: 'dlq_write', message: dbErr.message });\n} finally {\n  client.release();\n}\n\nreturn [{ json: input }];"
+      },
+      "id": "node-dlq-write",
+      "name": "DLQ Writer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "options": {},
+        "httpRequestMethod": "POST",
+        "url": "={{ $env.SLACK_WEBHOOK_URL }}",
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"text\": \"Error in intake pipeline.  Dead-letter row inserted.  Run: \" + $json.error.run_id + \"  Stage: \" + $json.stage + \"  DLQ id: \" + $json.dlq_id + \"  Message: \" + ($json.error.message || '')\n}"
+      },
+      "id": "node-alert",
+      "name": "Slack Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [850, 300]
+    },
+    {
+      "id": "node-no-end",
+      "parameters": {
+        "options": {}
+      },
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [[{"node": "Snapshot Error", "type": "main", "index": 0}]]
+    },
+    "Snapshot Error": {
+      "main": [[{"node": "DLQ Writer", "type": "main", "index": 0}]]
+    },
+    "DLQ Writer": {
+      "main": [[{"node": "Slack Alert", "type": "main", "index": 0}]]
+    },
+    "Slack Alert": {
+      "main": [[{"node": "Respond OK", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": true
+  },
+  "tags": ["error", "dead-letter", "alert"],
+  "pinData": {}
+}
