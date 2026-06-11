@@ -1,0 +1,1 @@
+{"expected_status":"routed","tier_should_be":"WARM","valid":true,"repair_used":false,"degraded":true,"notes":"Search unavailable should mark degraded but still complete routing; warm with good signals"}

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["expected_status", "tier_should_be", "valid", "repair_used"],
+  "properties": {
+    "expected_status": { "type": "string", "enum": ["routed", "inference_failed"] },
+    "tier_should_be": { "type": "string", "enum": ["HOT", "WARM", "COLD", "MANUAL"] },
+    "valid": { "type": "boolean" },
+    "repair_used": { "type": "boolean" },
+    "notes": { "type": "string" },
+    "degraded": { "type": "boolean" },
+    "idempotent": { "type": "boolean" },
+    "flags": { "type": "array", "items": { "type": "string" } }
+  }
+}

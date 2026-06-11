@@ -1,0 +1,7 @@
+{
+  "expected_status": "routed",
+  "tier_should_be": "HOT",
+  "valid": true,
+  "repair_used": false,
+  "notes": "Enterprise + budget + urgency + decision maker should composite to hot"
+}

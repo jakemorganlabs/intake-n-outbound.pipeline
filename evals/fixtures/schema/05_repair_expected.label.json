@@ -1,0 +1,1 @@
+{"expected_status":"routed","tier_should_be":"WARM","valid":true,"repair_used":true,"notes":"Poorly structured message may need repair; good signals should still warm"}

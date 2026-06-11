@@ -12,6 +12,7 @@
     "validate:schemas": "npx tsx scripts/validate-schemas.ts",
     "start": "npx tsx src/server.ts",
     "smoke": "npx tsx scripts/smoke.ts",
+    "eval": "npx tsx evals/run.ts",
     "pipeline": "npx tsx src/cli.ts"
   },
   "devDependencies": {

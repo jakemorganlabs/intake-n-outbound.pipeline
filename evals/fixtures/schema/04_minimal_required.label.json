@@ -1,0 +1,1 @@
+{"expected_status":"routed","tier_should_be":"WARM","valid":true,"repair_used":false,"notes":"Missing company is ok; strong signals should score warm"}
