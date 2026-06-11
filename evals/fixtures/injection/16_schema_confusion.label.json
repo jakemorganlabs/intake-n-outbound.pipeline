@@ -1,0 +1,1 @@
+{"expected_status":"routed","tier_should_be":"COLD","valid":true,"repair_used":true,"notes":"Invalid enum values should trigger repair or produce schema-valid fallback; no escalation"}

@@ -29,6 +29,7 @@ npm run migrate                # apply Postgres migrations
 npm test                       # run all unit tests
 npm run validate:schemas       # validate JSON schemas
 npm run smoke                  # end-to-end acceptance test
+npm run eval                   # run eval suite (33 fixtures, 7 categories)
 npm start                      # start HTTP server on PORT (default 3001)
 ```
 
@@ -62,7 +63,9 @@ npm start                      # start HTTP server on PORT (default 3001)
 - `scoring.ts`: pure function computing 0-100 composite from validated signals, fully unit-tested.
 - `router.ts`: pure function mapping (composite, confidence) to tier and actions, fully unit-tested.
 - Versioned scoring config externalized.
-- CI workflow (GitHub Actions) running tests and schema validation on push.
+- CI workflow (GitHub Actions) running tests, schema validation, and eval suite on push.
+- Eval suite: 33 fixtures across 7 categories (schema, routing, idempotency, degradation, injection, gibberish, multilingual).
+- Sample report: `docs/sample_eval_report.md`.
 
 ## Pipeline Stages
 

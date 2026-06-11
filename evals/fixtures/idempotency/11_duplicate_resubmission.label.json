@@ -1,0 +1,1 @@
+{"expected_status":"routed","tier_should_be":"COLD","valid":true,"repair_used":false,"idempotent":true,"notes":"Exact duplicate of 10; should short-circuit to 200 with no new outbound dispatch"}

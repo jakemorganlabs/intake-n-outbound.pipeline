@@ -1,0 +1,1 @@
+{"expected_status":"routed","tier_should_be":"COLD","valid":true,"repair_used":false,"idempotent":true,"notes":"First of pair; idempotency key should be new"}

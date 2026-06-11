@@ -1,0 +1,1 @@
+{"expected_status":"routed","tier_should_be":"COLD","valid":true,"repair_used":false,"degraded":true,"notes":"No real domain forces degraded search path but should not crash"}

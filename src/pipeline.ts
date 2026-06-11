@@ -4,6 +4,8 @@ import { createHash, createHmac } from 'crypto';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';
+import { logExecution, generateExecutionId } from './logger.js';
+import { recordMetric } from './metrics.js';
 
 // Need AJV for schema validation in the gate
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -531,12 +533,27 @@ export async function persist(
 
     const leadId = leadResult.rows[0].lead_id as string;
 
-    // Insert inference audit
+    // Insert inference audit (with cost tracking)
     let auditId: string | undefined;
+    let costCents: number | null = null;
     if (inference) {
+      // Load pricing config per §17.4
+      const pricingPath = resolve(__dirname, '../config/pricing.json');
+      let pricing: { rate_input_cents_per_1m_tokens: number; rate_output_cents_per_1m_tokens: number; model: string; recorded_at: string } = { rate_input_cents_per_1m_tokens: 25, rate_output_cents_per_1m_tokens: 125, model: MODEL_ID, recorded_at: 'unknown' };
+      try {
+        pricing = JSON.parse(readFileSync(pricingPath, 'utf-8'));
+      } catch {
+        // Fallback to default rates
+      }
+      const rateIn = pricing.rate_input_cents_per_1m_tokens / 1_000_000;
+      const rateOut = pricing.rate_output_cents_per_1m_tokens / 1_000_000;
+      const costIn = inference.input_tokens * rateIn;
+      const costOut = inference.output_tokens * rateOut;
+      costCents = parseFloat((costIn + costOut).toFixed(4));
+
       const auditSql = `INSERT INTO inference_audit
-        (lead_id, model, parameters, raw_output, validation_result, repair_used, latency_ms, prompt_tokens, completion_tokens)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+        (lead_id, model, parameters, raw_output, validation_result, repair_used, latency_ms, prompt_tokens, completion_tokens, cost_cents, price_snapshot)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
         RETURNING audit_id`;
 
       const validationResult = validation.valid
@@ -553,6 +570,8 @@ export async function persist(
         inference.latency_ms,
         inference.input_tokens,
         inference.output_tokens,
+        costCents,
+        JSON.stringify({ model: pricing.model, rate_input: rateIn, rate_output: rateOut, recorded_at: pricing.recorded_at }),
       ]);
       auditId = auditResult.rows[0]?.audit_id as string;
     }
@@ -639,10 +658,17 @@ async function dispatchAdapters(
 
 // - Main Pipeline -------------------------
 export async function runPipeline(payload: PipelineInput, overrides?: PipelineOverrides): Promise<PipelineOutput> {
+  const executionId = generateExecutionId();
   const startTime = Date.now();
+  const stages: Array<{ name: string; ms: number }> = [];
+
+  function mark(name: string): void {
+    stages.push({ name, ms: Date.now() - startTime });
+  }
 
   // Stage 1
   const stage1 = hmacAndNormalize(payload);
+  mark('hmac_normalize');
   if (stage1.response) return stage1.response;
   const normalized = stage1.normalized;
 
@@ -653,13 +679,16 @@ export async function runPipeline(payload: PipelineInput, overrides?: PipelineOv
     normalized.form_id,
     normalized.submitted_at
   );
+  mark('idempotency');
 
   // Stage 3: Research
   const research = await webResearch(normalized.domain, normalized.company);
+  mark('research');
 
   // Stage 4: Inference (allow override for testing)
   const inferenceFn = overrides?.inference ?? containedInference;
   const inferenceResult = await inferenceFn(normalized, research);
+  mark('inference');
   if (inferenceResult.error) {
     // Even on inference failure, persist and return
     const status = 'inference_failed';
@@ -669,6 +698,10 @@ export async function runPipeline(payload: PipelineInput, overrides?: PipelineOv
       { valid: false, repair_used: false, original_errors: [{ message: inferenceResult.error }] },
       status
     );
+    mark('persist');
+
+    recordMetric('dlq_total', { lead_id: leadId, tier: routing.tier, reason: 'inference_failed' }).catch(()=>{});
+
     // Write DLQ and alert for MANUAL
     await writeDeadLetter({
       leadSnapshot: {
@@ -681,6 +714,7 @@ export async function runPipeline(payload: PipelineInput, overrides?: PipelineOv
       stage: 'inference',
       error: `Inference failed: ${inferenceResult.error}`,
     });
+
     // Alert
     try {
       await dispatchChatAlert({
@@ -695,17 +729,33 @@ export async function runPipeline(payload: PipelineInput, overrides?: PipelineOv
     } catch {
       // Alert failure is non-fatal
     }
+
+    // Emit structured log on inference failure path
+    logExecution({
+      execution_id: executionId,
+      lead_id: leadId,
+      idempotency_key: idempotencyKey,
+      stages,
+      status,
+      tier: routing.tier,
+      repair_used: false,
+      degraded: research.degraded,
+      timestamp: new Date().toISOString(),
+    });
+
     return { statusCode: 200, body: { status, idempotency_key: idempotencyKey, lead_id: leadId, error: inferenceResult.error, latency_ms: Date.now() - startTime } };
   }
 
   // Stage 5: Validation Gate
   const validation = validationGate(inferenceResult.result.raw_output);
+  mark('validation_gate');
 
   // Stage 6: Scoring
   let score: ScoreResult | null = null;
   if (validation.valid && validation.enrichment) {
     score = scoring(validation.enrichment);
   }
+  mark('scoring');
 
   // Stage 7: Router
   const confidence = validation.valid && validation.enrichment
@@ -714,6 +764,7 @@ export async function runPipeline(payload: PipelineInput, overrides?: PipelineOv
   const composite = score?.composite ?? 0;
   const inferenceFailed = !validation.valid;
   const routing = router({ composite, confidence, inference_failed: inferenceFailed });
+  mark('routing');
 
   // Persist FIRST -- always
   const status = inferenceFailed ? 'inference_failed' : 'routed';
@@ -722,6 +773,14 @@ export async function runPipeline(payload: PipelineInput, overrides?: PipelineOv
     idempotencyKey, normalized, research, enrichment, score, routing,
     inferenceResult.result, validation, status
   );
+  mark('persist');
+
+  // Metrics counters per §17.3 NFR-OB-2
+  recordMetric('leads_total', { lead_id: leadId, tier: routing.tier }).catch(() => {});
+  recordMetric('leads_by_tier', { lead_id: leadId, tier: routing.tier }).catch(() => {});
+  if (research.degraded) recordMetric('search_degraded', { lead_id: leadId }).catch(() => {});
+  if (validation.repair_used) recordMetric('repair_used', { lead_id: leadId }).catch(() => {});
+  if (!validation.valid) recordMetric('gate_failures_total', { lead_id: leadId }).catch(() => {});
 
   // Stage 8: Dispatch outbound adapters
   let dispatchResults: Array<{ ok: boolean; adapter: string; latencyMs: number; error?: string }> = [];
@@ -731,10 +790,12 @@ export async function runPipeline(payload: PipelineInput, overrides?: PipelineOv
       inferenceResult.result, validation, status
     );
   }
+  mark('dispatch');
 
   // If any dispatch failed, dead-letter the action and update status
   const failed = dispatchResults.filter(r => !r.ok);
   if (failed.length > 0) {
+    recordMetric('dlq_total', { lead_id: leadId, tier: routing.tier, reason: 'dispatch_failure' }).catch(()=>{});
     for (const f of failed) {
       await writeDeadLetter({
         leadSnapshot: {
@@ -768,6 +829,25 @@ export async function runPipeline(payload: PipelineInput, overrides?: PipelineOv
   }
 
   const latencyMs = Date.now() - startTime;
+
+  // Emit structured log per §17.1 NFR-OB-1
+  logExecution({
+    execution_id: executionId,
+    lead_id: leadId,
+    idempotency_key: idempotencyKey,
+    stages,
+    model_id: inferenceResult.result.model,
+    token_counts: {
+      input: inferenceResult.result.input_tokens || 0,
+      output: inferenceResult.result.output_tokens || 0,
+    },
+    composite: score?.composite,
+    tier: routing.tier,
+    status,
+    repair_used: validation.repair_used,
+    degraded: research.degraded,
+    timestamp: new Date().toISOString(),
+  });
 
   const responseBody: Record<string, unknown> = {
     status,

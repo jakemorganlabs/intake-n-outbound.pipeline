@@ -1,0 +1,63 @@
+name: Evals
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: intake_pipeline
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Apply DB migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/intake_pipeline
+        run: |
+          for f in migrations/*.sql; do
+            echo "Applying $f"
+            psql "$DATABASE_URL" -f "$f"
+          done
+      - name: Run eval suite
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/intake_pipeline
+        run: |
+          # Start the server in background
+          npx tsx src/server.ts &
+          SERVER_PID=$!
+          # Wait for startup
+          sleep 2
+          for i in $(seq 1 10); do
+            curl -sf http://localhost:3001/health && break
+            sleep 1
+          done
+          # Run evals
+          npm run eval
+          EXIT=$?
+          kill $SERVER_PID || true
+          exit $EXIT
+      - name: Upload eval report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: evals/report.md
