@@ -129,7 +129,7 @@ if [[ "$TIER" == "all" || "$TIER" == "manual" ]]; then
   echo "[TIER MANUAL] Posting payload that triggers MANUAL..."
   # We simulate this by pointing at a local mock that returns invalid schema,
   # but since this script uses the real server, we skip the assert and document.
-  echo "SKIP: MANUAL tier requires a mocked inference; verify via scripts/smoke-s03.ts"
+  echo "SKIP: MANUAL tier requires a mocked inference; verify via scripts/smoke.ts"
 fi
 
 # -- Chaos test --------------------------------------------------------

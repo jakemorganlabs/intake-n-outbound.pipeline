@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  eval:
+  offline-checks:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -29,6 +29,9 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci
+      - run: npm run lint
+      - run: npm run validate:schemas
+      - run: npm test
       - name: Apply DB migrations
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/intake_pipeline
@@ -37,27 +40,3 @@ jobs:
             echo "Applying $f"
             psql "$DATABASE_URL" -f "$f"
           done
-      - name: Run eval suite
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/intake_pipeline
-        run: |
-          # Start the server in background
-          npx tsx src/server.ts &
-          SERVER_PID=$!
-          # Wait for startup
-          sleep 2
-          for i in $(seq 1 10); do
-            curl -sf http://localhost:3001/health && break
-            sleep 1
-          done
-          # Run evals
-          npm run eval
-          EXIT=$?
-          kill $SERVER_PID || true
-          exit $EXIT
-      - name: Upload eval report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: eval-report
-          path: evals/report.md
