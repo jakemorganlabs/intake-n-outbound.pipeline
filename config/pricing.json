@@ -1,9 +1,9 @@
 {
   "schema_version": "1.0",
-  "recorded_at": "2026-06-11",
-  "model": "claude-3-5-haiku-20241022",
-  "rate_input_cents_per_1m_tokens": 25,
-  "rate_output_cents_per_1m_tokens": 125,
-  "source": "anthropic.com/pricing",
+  "recorded_at": "2026-06-21",
+  "model": "google/gemma-4-26B-A4B-it",
+  "rate_input_cents_per_1m_tokens": 6,
+  "rate_output_cents_per_1m_tokens": 33,
+  "source": "deepinfra.com/pricing",
   "warning_threshold_days": 90
 }

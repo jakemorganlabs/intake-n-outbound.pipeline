@@ -123,19 +123,19 @@ echo ""
 # Start fresh .env with non-secret defaults
 cat > .env <<EOF
 DATABASE_URL="postgresql://${DB_USER}@localhost:5432/${DB_NAME}"
-MODEL_ID="claude-3-5-haiku-20241022"
+MODEL_ID="google/gemma-4-26B-A4B-it"
 PORT=3001
 GOOGLE_SHEET_RANGE="warm_leads!A1"
 EOF
 
-prompt_secret "ANTHROPIC_API_KEY" \
-  "Anthropic API key — powers Claude Haiku structured JSON enrichment for each lead." \
-  "sk-ant-api03-..." \
+prompt_secret "INFERENCE_API_KEY" \
+  "DeepInfra API key — powers Gemma 4 structured JSON enrichment for each lead." \
+  "di-..." \
   "true"
 
 prompt_secret "MODEL_API_KEY" \
-  "Model API key alias (optional) — same as ANTHROPIC_API_KEY if your tooling expects MODEL_API_KEY." \
-  "sk-ant-api03-..." \
+  "Model API key alias (optional) — same as INFERENCE_API_KEY if your tooling expects MODEL_API_KEY." \
+  "di-..." \
   "false"
 
 prompt_secret "SEARCH_API_KEY" \

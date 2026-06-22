@@ -48,7 +48,7 @@ function timestamp() {
 // Mock inference: HOT (composite 96)
 const mockInferenceHot = async (_n: NormalizedLead, _r: WebResearch): Promise<{ result: InferenceResult; error?: string }> => ({
   result: {
-    model: 'claude-3-5-haiku-20241022',
+    model: 'google/gemma-4-26B-A4B-it',
     raw_output: {
       company_size: 'mid',
       industry: 'healthcare',
@@ -66,7 +66,7 @@ const mockInferenceHot = async (_n: NormalizedLead, _r: WebResearch): Promise<{ 
 // Mock inference: WARM (composite 55)
 const mockInferenceWarm = async (_n: NormalizedLead, _r: WebResearch): Promise<{ result: InferenceResult; error?: string }> => ({
   result: {
-    model: 'claude-3-5-haiku-20241022',
+    model: 'google/gemma-4-26B-A4B-it',
     raw_output: {
       company_size: 'small',
       industry: 'healthcare',
@@ -84,7 +84,7 @@ const mockInferenceWarm = async (_n: NormalizedLead, _r: WebResearch): Promise<{
 // Mock inference: COLD (composite 25)
 const mockInferenceCold = async (_n: NormalizedLead, _r: WebResearch): Promise<{ result: InferenceResult; error?: string }> => ({
   result: {
-    model: 'claude-3-5-haiku-20241022',
+    model: 'google/gemma-4-26B-A4B-it',
     raw_output: {
       company_size: 'solo',
       industry: 'unknown',
@@ -102,7 +102,7 @@ const mockInferenceCold = async (_n: NormalizedLead, _r: WebResearch): Promise<{
 // Mock inference: schema-invalid (routed to MANUAL)
 const mockInferenceManual = async (_n: NormalizedLead, _r: WebResearch): Promise<{ result: InferenceResult; error?: string }> => ({
   result: {
-    model: 'claude-3-5-haiku-20241022',
+    model: 'google/gemma-4-26B-A4B-it',
     raw_output: {
       company_size: 'extralarge',
       industry: 'healthcare',
