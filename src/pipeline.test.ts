@@ -178,7 +178,7 @@ describe('Pipeline', () => {
   describe('S02: end-to-end runPipeline with mocked inference', () => {
     const mockInference = async (_n: NormalizedLead, _r: WebResearch): Promise<{ result: InferenceResult; error?: string }> => ({
       result: {
-        model: 'claude-3-5-haiku-20241022',
+        model: 'google/gemma-4-26B-A4B-it',
         raw_output: {
           company_size: 'mid',
           industry: 'healthcare',
@@ -245,7 +245,7 @@ describe('Pipeline', () => {
       await resetTables();
       const repairMock = async (): Promise<{ result: InferenceResult; error?: string }> => ({
         result: {
-          model: 'claude-3-5-haiku-20241022',
+          model: 'google/gemma-4-26B-A4B-it',
           raw_output: {
             company_size: 'mid',
             industry: 'healthcare',
@@ -272,7 +272,7 @@ describe('Pipeline', () => {
       await resetTables();
       const doubleInvalidMock = async (): Promise<{ result: InferenceResult; error?: string }> => ({
         result: {
-          model: 'claude-3-5-haiku-20241022',
+          model: 'google/gemma-4-26B-A4B-it',
           raw_output: {
             company_size: 'extralarge',
             industry: 'healthcare',

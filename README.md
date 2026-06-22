@@ -140,7 +140,7 @@ GitHub Actions runs **offline checks only** — lint, schema validation, unit te
 - HMAC verification with timing-safe comparison.
 - Dedupe guard: atomic insert-if-absent, short-circuits duplicates with 200.
 - Research adapter: Brave Search HTTP call with provenance, fail-open on any error.
-- Contained inference: Anthropic structured tool-use (claude-3-5-haiku-20241022, `temperature: 0`), token and latency capture.
+- Contained inference: DeepInfra OpenAI-compatible endpoint (`google/gemma-4-26B-A4B-it`, `temperature: 0`, `response_format: json_object`), token and latency capture.
 - Validation gate: strict JSON Schema via AJV draft-2020-12, one repair attempt with safe heuristics, MANUAL on double failure.
 - Scoring and routing wired from core modules with no duplication.
 - Persistence: `leads` + `inference_audit` INSERT with ON CONFLICT UPDATE, always runs even on MANUAL.
