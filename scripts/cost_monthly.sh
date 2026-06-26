@@ -8,10 +8,10 @@ set -euo pipefail
 DATABASE_URL="${DATABASE_URL:-postgresql://postgres:postgres@localhost:5432/intake_pipeline}"
 PSQL="psql ${DATABASE_URL} --tuples-only --no-align"
 
-# Prices in cents per 1M tokens (example rates for Claude Haiku 3.5)
+# Prices in cents per 1M tokens (DeepInfra rates for google/gemma-4-26B-A4B-it)
 # Override via env vars if needed
-RATE_IN_CENTS_PER_1M="${RATE_IN_CENTS_PER_1M:-25}"
-RATE_OUT_CENTS_PER_1M="${RATE_OUT_CENTS_PER_1M:-125}"
+RATE_IN_CENTS_PER_1M="${RATE_IN_CENTS_PER_1M:-6}"
+RATE_OUT_CENTS_PER_1M="${RATE_OUT_CENTS_PER_1M:-33}"
 
 compute_cost(){
     local in_tokens=$1

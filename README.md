@@ -2,12 +2,16 @@
 
 A lead-intelligence pipeline that receives a public form submission, enriches it with web research and a single contained language-model inference, scores it with deterministic rules, and routes it to one of three outbound tiers.
 
+## Model Switch Notice
+
+The pipeline previously used **Claude Haiku 3.5** for structured JSON enrichment. Anthropic retired that model on **2026-02-19**, which caused every inference call to fail and dead-lettered all leads to the `MANUAL` tier. We have switched the inference stage to **`google/gemma-4-26B-A4B-it`** served via **DeepInfra's OpenAI-compatible endpoint**. The pipeline is functional again.
+
 ## Architecture
 
 ```
 [1] Webhook -> [2] HMAC/Normalize -> [3] Dedupe Guard
                                         |
-[4] Web Research (fail-open) -> [5] Contained Inference (Anthropic, temp 0)
+[4] Web Research (fail-open) -> [5] Contained Inference (DeepInfra, `google/gemma-4-26B-A4B-it`, temp 0)
                                         |
                          [6] Validation Gate (AJV + one repair)
                                         |
@@ -22,7 +26,7 @@ A lead-intelligence pipeline that receives a public form submission, enriches it
 
 ```bash
 cp .env.example .env
-# edit .env with your DATABASE_URL, ANTHROPIC_API_KEY, SEARCH_API_KEY, WEBHOOK_SECRET
+# edit .env with your DATABASE_URL, INFERENCE_API_KEY, SEARCH_API_KEY, WEBHOOK_SECRET
 
 npm install
 npm run migrate                # apply Postgres migrations
@@ -40,7 +44,7 @@ This project is designed to run on a persistent Linux VPS with **systemd**. Secr
 ### Pipeline flow (production)
 
 ```
-Tally form -> POST /intake-webhook -> Claude Haiku (structured JSON)
+Tally form -> POST /intake-webhook -> google/gemma-4-26B-A4B-it via DeepInfra (structured JSON)
   -> Brave Search (web enrichment) -> composite scoring -> route:
        HOT  -> Slack + HubSpot CRM
        WARM -> Google Sheets

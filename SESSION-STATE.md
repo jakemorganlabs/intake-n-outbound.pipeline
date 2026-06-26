@@ -78,7 +78,7 @@
 ### CKPT 2 -- Session S02 complete
 - Installed n8n (v2.25.7) native via npm, configured with Postgres backend, owner account created on localhost:5678.
 - Installed PostgreSQL 16 via Homebrew, started service, created `intake_pipeline` and `n8n` databases, ran all 4 migrations.
-- `src/pipeline.ts`: complete orchestration spine -- HMAC + normalizer, idempotency guard (atomic INSERT ON CONFLICT), research adapter (fail-open, provenance), contained inference (Anthropic structured tool-use, pinned model, temp 0, token/latency capture), validation gate (AJV strict JSON Schema + one-shot repair + MANUAL fallback), scoring (versioned config, 0-100 composite), router (confidence-aware tiering), persistence (INSERT leads + inference_audit, always runs even on MANUAL).
+- `src/pipeline.ts`: complete orchestration spine -- HMAC + normalizer, idempotency guard (atomic INSERT ON CONFLICT), research adapter (fail-open, provenance), contained inference (DeepInfra OpenAI-compatible endpoint with `google/gemma-4-26B-A4B-it`, `response_format: json_object`, temp 0, token/latency capture), validation gate (AJV strict JSON Schema + one-shot repair + MANUAL fallback), scoring (versioned config, 0-100 composite), router (confidence-aware tiering), persistence (INSERT leads + inference_audit, always runs even on MANUAL).
 - `src/server.ts`: Hono HTTP webhook entrypoint at `/intake-webhook` + health check.
 - `src/cli.ts`: CLI reads JSON payload from stdin, runs pipeline, prints structured result.
 - `workflows/intake_main.json`: n8n workflow JSON export with all pipeline nodes (webhook -> HMAC -> dedupe -> research -> inference -> gate -> scoring -> router -> persist -> response).
