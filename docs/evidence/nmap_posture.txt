@@ -1,0 +1,9 @@
+# Port-Scan Posture Proof
+
+__AFTER_DEPLOY__: run `sudo nmap -Pn -p 1-65535 <vps-public-ip>` from a host outside the VPS and paste the output here.
+
+---
+
+```
+# Replace with actual nmap output after deployment.
+```

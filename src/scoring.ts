@@ -1,3 +1,9 @@
+/**
+ * Deterministic composite scoring (0-100).
+ * Invariant: Given the same validated signals, this function returns the exact same composite score.
+ * All weights and factors are loaded from an external, versioned config file.
+ * This module deliberately does NOT call the model; scoring is pure function + config.
+ */
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { fileURLToPath } from 'url';

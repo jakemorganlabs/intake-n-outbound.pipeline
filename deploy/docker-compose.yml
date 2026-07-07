@@ -1,0 +1,72 @@
+# deploy/docker-compose.yml
+# Production stack: n8n + Postgres + cloudflared sidecar
+# No :latest tags. No public inbound ports except what the tunnel publishes.
+# Postgres is not reachable from the host.
+# n8n is on the compose network only; cloudflared reaches it as http://n8n:5678
+
+services:
+  postgres:
+    image: postgres:16.4
+    # pinned — bump deliberately
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER:-postgres}\" -d \"$${POSTGRES_DB:-intake_pipeline}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # No ports; not reachable from host or internet
+    ports: []
+    networks:
+      - pipeline
+
+  n8n:
+    image: n8nio/n8n:1.54.0
+    # pinned — bump deliberately; check https://github.com/n8n-io/n8n/releases
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_PORT: "5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./../workflows:/imported-workflows:ro
+    # Bind to loopback only if host port is needed locally; otherwise no ports
+    ports:
+      - "127.0.0.1:5678:5678"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5678/healthz || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    networks:
+      - pipeline
+
+  cloudflared:
+    image: cloudflare/cloudflared:2025.6.0
+    # pinned — bump deliberately; check https://github.com/cloudflare/cloudflared/releases
+    restart: unless-stopped
+    env_file: .env.production
+    command: tunnel run --token "${TUNNEL_TOKEN}"
+    # cloudflared needs no volumes; tunnel is remote-managed
+    volumes: []
+    networks:
+      - pipeline
+    depends_on:
+      - n8n
+
+volumes:
+  pg_data:
+  n8n_data:
+
+networks:
+  pipeline:
+    driver: bridge

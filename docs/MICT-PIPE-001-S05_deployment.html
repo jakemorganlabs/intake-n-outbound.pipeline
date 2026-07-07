@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session S05 — Deployment · MICT-PIPE-001</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%2280%22 font-size=%2290%22>●</text></svg>">
+<style>
+  :root {
+    --ink: #0a0a0a;
+    --paper: #fafaf7;
+    --paper-2: #f0efea;
+    --paper-3: #e8e7e1;
+    --rule: #1a1a1a;
+    --rule-soft: rgba(10,10,10,0.12);
+    --rule-softer: rgba(10,10,10,0.07);
+    --dim: #555;
+    --dimmer: #888;
+    --done: #999;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.7;
+    min-height: 100vh;
+    padding: 56px 40px 140px;
+    background-image: radial-gradient(circle at 1px 1px, rgba(10,10,10,0.04) 1px, transparent 0);
+    background-size: 24px 24px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 860px; margin: 0 auto; }
+  a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--rule-soft); }
+  a:hover { border-bottom-color: var(--ink); }
+
+  /* MASTHEAD */
+  .masthead {
+    border-top: 2px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    padding: 24px 0 30px;
+    margin-bottom: 36px;
+  }
+  .masthead-meta {
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+    font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+    margin-bottom: 26px; color: var(--dim);
+  }
+  .doctype {
+    font-size: 10px; letter-spacing: 0.28em; text-transform: uppercase;
+    color: var(--dim); margin-bottom: 18px;
+  }
+  .doctype span { color: var(--ink); }
+  h1.title {
+    font-family: 'Cormorant Garamond', serif; font-weight: 500;
+    font-size: clamp(40px, 6.5vw, 68px); line-height: 0.96;
+    letter-spacing: -0.02em; margin-bottom: 16px;
+  }
+  .subtitle {
+    font-family: 'Cormorant Garamond', serif; font-style: italic;
+    font-size: 21px; color: var(--dim); margin-bottom: 26px; max-width: 60ch;
+  }
+  .id-grid {
+    display: grid; grid-template-columns: repeat(4, auto); gap: 28px;
+    font-size: 11px; letter-spacing: 0.05em; color: var(--dim);
+  }
+  .id-grid .k { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--dimmer); display: block; margin-bottom: 3px; }
+  .id-grid .v { color: var(--ink); }
+
+  /* ABSTRACT */
+  .abstract {
+    font-family: 'Cormorant Garamond', serif; font-size: 18px;
+    line-height: 1.55; color: var(--dim); margin-bottom: 30px;
+    border-left: 2px solid var(--ink); padding: 4px 0 4px 24px;
+  }
+  .abstract strong { color: var(--ink); font-weight: 600; }
+
+  /* BOX */
+  .box {
+    border: 1px solid var(--rule); padding: 28px 30px 24px;
+    margin: 34px 0; position: relative; background: var(--paper-2);
+  }
+  .box::before {
+    content: attr(data-label); position: absolute; top: -8px; left: 22px;
+    background: var(--paper); padding: 0 12px;
+    font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink);
+  }
+  .box.plain { background: transparent; }
+
+  /* THESIS */
+  .thesis {
+    background: var(--ink); color: var(--paper); padding: 34px 34px 30px;
+    margin: 40px 0; position: relative;
+  }
+  .thesis::before {
+    content: attr(data-label); position: absolute; top: -8px; left: 24px;
+    background: var(--paper); color: var(--ink); padding: 0 12px;
+    font-size: 10px; letter-spacing: 0.2em; border: 1px solid var(--ink);
+  }
+  .thesis h3 { color: var(--paper); border: none; margin: 0 0 12px; }
+  .thesis p { color: rgba(250,250,247,0.82); font-size: 13px; }
+  .thesis p + p { margin-top: 12px; }
+  .thesis strong { color: var(--paper); }
+
+  /* PART DIVIDER */
+  .part {
+    display: flex; align-items: baseline; gap: 24px;
+    margin: 78px 0 10px; padding-bottom: 16px; border-bottom: 1px solid var(--rule);
+  }
+  .part:first-of-type { margin-top: 56px; }
+  .part-num {
+    font-family: 'Cormorant Garamond', serif; font-style: italic;
+    font-size: 54px; line-height: 1; font-weight: 500;
+  }
+  .part-title {
+    font-family: 'Cormorant Garamond', serif; font-size: 27px; font-weight: 500;
+    letter-spacing: -0.01em; flex: 1;
+  }
+  .part-meta { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--dim); white-space: nowrap; }
+  .part-desc {
+    font-family: 'Cormorant Garamond', serif; font-style: italic;
+    font-size: 17px; color: var(--dim); margin: 16px 0 40px; padding-left: 2px;
+  }
+
+  /* HEADINGS */
+  h2 {
+    font-family: 'Cormorant Garamond', serif; font-weight: 500; font-size: 25px;
+    letter-spacing: -0.01em; margin: 52px 0 8px; padding-bottom: 10px;
+    border-bottom: 1px solid var(--rule); display: flex; align-items: baseline; gap: 14px;
+  }
+  h2 .sec { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; color: var(--dim); letter-spacing: 0.05em; }
+  h3 {
+    font-family: 'Cormorant Garamond', serif; font-weight: 600; font-size: 19px;
+    margin: 32px 0 6px; display: flex; align-items: baseline; gap: 12px;
+  }
+  h3 .sec { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; color: var(--dimmer); letter-spacing: 0.05em; }
+  h4 {
+    font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--dim); margin: 24px 0 8px; font-weight: 600;
+  }
+
+  /* PROSE */
+  p { font-size: 13px; margin: 12px 0; }
+  p.lead { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 16px; color: var(--dim); }
+  strong { font-weight: 600; }
+  em { font-style: italic; }
+  .muted { color: var(--dim); }
+
+  ul, ol { margin: 12px 0 12px; padding-left: 0; list-style: none; }
+  li { font-size: 13px; margin-bottom: 9px; padding-left: 20px; position: relative; line-height: 1.55; }
+  ul > li::before { content: "—"; position: absolute; left: 0; color: var(--dimmer); }
+  ol { counter-reset: ol; }
+  ol > li { counter-increment: ol; }
+  ol > li::before { content: counter(ol) "."; position: absolute; left: 0; color: var(--dimmer); font-size: 11px; }
+  li strong { font-weight: 600; }
+
+  /* INLINE CODE */
+  code {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    background: var(--paper-2); padding: 1px 5px; border: 1px solid var(--rule-soft); white-space: nowrap;
+  }
+
+  /* CODE / DIAGRAM BLOCKS */
+  pre {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.55;
+    background: var(--paper-2); border: 1px solid var(--rule-soft);
+    padding: 18px 20px; margin: 18px 0; overflow-x: auto; white-space: pre;
+    position: relative;
+  }
+  pre.code { background: #0e0e0d; color: #e8e7e1; border-color: #0e0e0d; }
+  pre.code .cm { color: #8a8a86; }
+  pre .lbl {
+    display: block; font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--dimmer); margin-bottom: 12px;
+  }
+  pre.code .lbl { color: #7a7a76; }
+
+  /* TABLES */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 18px 0; }
+  caption { caption-side: top; text-align: left; font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--dimmer); margin-bottom: 10px; }
+  th { text-align: left; font-size: 9px; letter-spacing: 0.13em; text-transform: uppercase; color: var(--dim); font-weight: 500; border-bottom: 1px solid var(--rule); padding: 9px 10px; vertical-align: bottom; }
+  td { border-bottom: 1px solid var(--rule-softer); padding: 10px 10px; vertical-align: top; line-height: 1.5; }
+  tr:hover td { background: rgba(10,10,10,0.015); }
+  td.id, th.id { white-space: nowrap; font-weight: 600; width: 1%; }
+  td.lvl { white-space: nowrap; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .lvl-must { font-weight: 600; color: var(--ink); }
+  .lvl-should { color: var(--dim); }
+  .lvl-may { color: var(--dimmer); }
+  .tier { font-weight: 600; white-space: nowrap; }
+
+  /* KEY-VALUE GRID */
+  .kv { display: grid; grid-template-columns: 180px 1fr; gap: 0; margin: 14px 0; font-size: 12px; border-top: 1px solid var(--rule-soft); }
+  .kv dt { padding: 9px 12px 9px 0; color: var(--dim); border-bottom: 1px solid var(--rule-softer); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .kv dd { padding: 9px 0; border-bottom: 1px solid var(--rule-softer); }
+  @media (max-width: 600px){ .kv { grid-template-columns: 1fr; } .kv dd { padding-top: 0; padding-bottom: 12px; } }
+
+  /* SESSION-PLAN-SPECIFIC: position diagram */
+  .arc {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
+    margin: 24px 0 18px; border: 1px solid var(--rule); background: var(--paper-2);
+  }
+  .arc .cell {
+    padding: 16px 12px 14px; border-right: 1px solid var(--rule-soft);
+    position: relative; text-align: left;
+  }
+  .arc .cell:last-child { border-right: none; }
+  .arc .cell .n { font-family: 'Cormorant Garamond', serif; font-size: 26px; line-height: 1; font-weight: 500; color: var(--dimmer); }
+  .arc .cell .lbl { font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--dim); margin-top: 6px; }
+  .arc .cell .name { font-size: 12px; color: var(--ink); margin-top: 4px; line-height: 1.35; }
+  .arc .cell.done { background: var(--paper-3); }
+  .arc .cell.done .n, .arc .cell.done .name { color: var(--done); }
+  .arc .cell.current { background: var(--ink); color: var(--paper); }
+  .arc .cell.current .n { color: var(--paper); }
+  .arc .cell.current .lbl { color: rgba(250,250,247,0.7); }
+  .arc .cell.current .name { color: var(--paper); }
+  .arc .cell.future .n { color: var(--dimmer); }
+  .arc .cell.future .name { color: var(--dim); }
+
+  /* CHECKLIST */
+  .checklist li { padding-left: 26px; }
+  .checklist li::before {
+    content: "☐"; position: absolute; left: 0; color: var(--dimmer);
+    font-size: 13px; line-height: 1.5;
+  }
+
+  /* FOOTER */
+  .footer {
+    margin-top: 80px; border-top: 1px solid var(--rule); padding-top: 24px;
+    text-align: center; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dimmer);
+  }
+  .footer em { display: block; font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 17px; text-transform: none; letter-spacing: 0; color: var(--dim); margin-top: 14px; }
+
+  hr.soft { border: none; border-top: 1px solid var(--rule-soft); margin: 30px 0; }
+
+  /* PRINT */
+  @media print {
+    body { background: #fff; padding: 0; font-size: 10.5pt; }
+    pre.code { background: #fff; color: #000; border: 1px solid #999; }
+    .thesis { background: #fff; color: #000; border: 2px solid #000; }
+    .thesis h3, .thesis p, .thesis strong { color: #000; }
+    .arc .cell.current { background: #fff; color: #000; border: 2px solid #000; }
+    .arc .cell.current .n, .arc .cell.current .name { color: #000; }
+    .part { break-before: page; }
+    .part:first-of-type { break-before: avoid; }
+    h2, h3 { break-after: avoid; }
+    pre, table, .box, .thesis, .arc { break-inside: avoid; }
+    a { border: none; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ============================= MASTHEAD ============================= -->
+  <div class="masthead">
+    <div class="masthead-meta">
+      <span>jakemorganlabs · portfolio piece i · build plan</span>
+      <span>controlled document</span>
+    </div>
+    <div class="doctype"><span>Session 5 of 5</span> &nbsp;·&nbsp; <span>Build Plan</span></div>
+    <h1 class="title">Deployment</h1>
+    <div class="subtitle">Live on the Hetzner VPS, behind a Cloudflare Tunnel that exposes only the webhook path, with a smoke test from outside the box proving the whole arc works in production.</div>
+    <div class="id-grid">
+      <div><span class="k">Doc ID</span><span class="v">MICT-PIPE-001-S05</span></div>
+      <div><span class="k">Parent</span><span class="v">MICT-PIPE-001 v1.0</span></div>
+      <div><span class="k">Prereq</span><span class="v">S04 complete — evals green and gating main</span></div>
+      <div><span class="k">Est. effort</span><span class="v">~2–4 hours focused</span></div>
+    </div>
+  </div>
+
+  <p class="abstract">Session S05 of the MICT-PIPE-001 build. This document defines the goal, scope, deliverables, build sequence, and acceptance criteria for a single working session. It is bounded so the work fits in one focused block and produces artifacts a future session can rely on without revision. The five-session arc — Core, Spine, Adapters, Evals, Deploy — is shown below; each session ends with a clean handoff to the next.</p>
+
+  <!-- ============================= THESIS ============================= -->
+  <div class="thesis" data-label="Session Thesis">
+    <h3>Deployment is where the design's edge claims meet the open internet.</h3>
+    <p>The §19 deployment topology is small and deliberate: a single VPS, the orchestration runtime and Postgres as containers, an encrypted tunnel that publishes <em>only</em> the webhook path, and outbound HTTPS to five named APIs. No open inbound ports. No SSH exposed to the internet. The whole edge surface area is one URL.</p>
+    <p>This session does the unglamorous work that turns a working system on a laptop into something a stranger could hit at <code>https://intake.jakemorganlabs.dev/webhook</code> and have it behave correctly. The success criterion is a smoke test posted from <em>outside</em> the VPS, ending in a lead row and a Slack ping. Once that passes, Piece I is done.</p>
+  </div>
+
+  <!-- ============================= POSITION ============================= -->
+  <h2 id="s0"><span class="sec">§0</span> Position in the Build Arc</h2>
+  <p class="muted">The five-session build, with this session highlighted. Each predecessor must be complete before this one begins; each is a precondition for what follows.</p>
+  <div class="arc"><div class="cell done"><div class="n">S01</div><div class="name">Deterministic Core</div><div class="lbl">Complete</div></div><div class="cell done"><div class="n">S02</div><div class="name">Orchestration Spine</div><div class="lbl">Complete</div></div><div class="cell done"><div class="n">S03</div><div class="name">Adapters & Error Workflow</div><div class="lbl">Complete</div></div><div class="cell done"><div class="n">S04</div><div class="name">Evals & Observability</div><div class="lbl">Complete</div></div><div class="cell current"><div class="n">S05</div><div class="name">Deployment</div><div class="lbl">You are here</div></div></div>
+  <p class="muted">The arc is intentionally linear. Each session has one job and ends with a testable artifact, so the next session can begin from a known state instead of inheriting half-finished work.</p>
+
+  <!-- ============================= GOAL & EXIT ============================= -->
+  <h2 id="s1"><span class="sec">§1</span> Goal &amp; Exit Criteria</h2>
+  <p>By the end of this session the following are true. Anything short of this means the session is not done, regardless of how much code was written.</p>
+  <ul><li><code>curl https://intake.jakemorganlabs.dev/webhook</code> from a laptop on another network → 200 + lead row + tier-appropriate outbound effect.</li><li>Only the webhook path is publicly reachable; the n8n editor and the DB are not exposed to the internet.</li><li>Secrets are in env files (or a secret store), not in any committed file or any exported workflow JSON.</li><li>Postgres is backed up nightly via <code>pg_dump</code> + retention.</li><li>Redeployment runbook in the README: how to redeploy, how to apply a migration, how to rotate a secret.</li><li>Eval suite passes against the deployed instance (via a separate <code>EVAL_ENV=prod</code> mode).</li></ul>
+
+  <!-- ============================= PREREQUISITES ============================= -->
+  <h2 id="s2"><span class="sec">§2</span> Prerequisites</h2>
+  <p class="muted">Conditions that must be in place before this session can usefully start.</p>
+  <ul><li>S04 deliverables on <code>main</code>; CI green.</li><li>Hetzner VPS provisioned, hardened (UFW, SSH key-only, fail2ban).</li><li>Cloudflare account; Cloudflare Tunnel set up with <code>cloudflared</code> installed on the VPS.</li><li>Domain (or subdomain) configured at Cloudflare DNS pointing to the tunnel.</li></ul>
+
+  <!-- ============================= SCOPE ============================= -->
+  <h2 id="s3"><span class="sec">§3</span> Scope</h2>
+  <h4>In scope</h4>
+  <ul><li><code>docker-compose.yml</code> for the production stack: n8n + Postgres + a <code>cloudflared</code> sidecar (or host-installed).</li><li>Image pinning (n8n version, Postgres version) — no <code>latest</code> tags.</li><li>Volume strategy: Postgres data on a named volume; n8n workflows imported at boot from <code>workflows/</code>.</li><li><code>.env.production.example</code> documenting every required variable.</li><li>Cloudflare Tunnel config exposing only <code>/webhook</code>; other paths return 404 at the edge.</li><li>Database backup: <code>pg_dump</code> via cron, with at least seven days of retention.</li><li>Deployment runbook in README: redeploy, migrate, rotate secrets, restore from backup.</li><li>External smoke test: <code>scripts/smoke_prod.sh</code> hitting the public URL.</li><li>Production eval mode: <code>EVAL_ENV=prod npm run eval</code> using a clean test webhook path or namespaced dedupe keys.</li></ul>
+  <h4>Out of scope</h4>
+  <ul><li>Auto-scaling, horizontal redundancy, blue/green deploys — the §19 topology explicitly chooses one box.</li><li>Long-term log retention or metrics dashboards — deferred to the capstone (MICT-FIELD-005).</li><li>Multi-tenant operation — explicitly out of scope per §1.2.</li></ul>
+
+  <!-- ============================= DELIVERABLES ============================= -->
+  <h2 id="s4"><span class="sec">§4</span> Deliverables</h2>
+  <p class="muted">Concrete artifacts produced by the session, each traceable back to the parent SRS section that motivates it.</p>
+  <table><thead><tr><th class='id'>Deliverable</th><th>Artifact</th><th>Traces to</th></tr></thead><tbody><tr><td class='id'>Compose file</td><td><code>deploy/docker-compose.yml</code></td><td class='muted'>§19</td></tr><tr><td class='id'>Env template</td><td><code>deploy/.env.production.example</code></td><td class='muted'>§16</td></tr><tr><td class='id'>Tunnel config</td><td><code>deploy/cloudflared/config.yml</code></td><td class='muted'>§19 ingress</td></tr><tr><td class='id'>Backup</td><td><code>deploy/cron/pg_dump.sh</code> + retention rotation</td><td class='muted'>§17.2</td></tr><tr><td class='id'>Smoke test</td><td><code>scripts/smoke_prod.sh</code></td><td class='muted'>§B</td></tr><tr><td class='id'>Prod eval mode</td><td><code>EVAL_ENV=prod</code> branch of <code>evals/run.ts</code></td><td class='muted'>§18</td></tr><tr><td class='id'>Runbook</td><td><code>docs/runbook.md</code>: redeploy, migrate, rotate, restore</td><td class='muted'>§19, §17</td></tr><tr><td class='id'>Status page entry</td><td>Brief uptime ping on a separate monitor (UptimeRobot etc.)</td><td class='muted'>§17.3</td></tr></tbody></table>
+
+  <!-- ============================= SEQUENCE ============================= -->
+  <h2 id="s5"><span class="sec">§5</span> Build Sequence</h2>
+  <p class="muted">An ordered set of steps. Each step is small enough to complete and verify before moving to the next; together they cover every deliverable.</p>
+  <ol><li>Write <code>deploy/docker-compose.yml</code> pinning n8n + Postgres versions explicitly. Test the compose stack locally; confirm the smoke test passes against the local compose stack.</li><li>Create <code>deploy/.env.production.example</code> listing every required variable with a one-line description. Author the real <code>.env.production</code> outside the repo.</li><li>SSH to the Hetzner VPS. Clone the repo. Place <code>.env.production</code>. Bring up the stack with <code>docker compose up -d</code>. Apply migrations.</li><li>Import the n8n workflow JSONs at boot — either via n8n's CLI on container start, or via a one-shot import script invoked by the runbook.</li><li>Install <code>cloudflared</code>. Authenticate. Create the tunnel. Configure ingress so only the webhook path is routed; everything else returns 404 at the edge.</li><li>Configure DNS at Cloudflare: <code>intake.jakemorganlabs.dev</code> CNAME to the tunnel's hostname.</li><li>Set up nightly <code>pg_dump</code> via cron with a seven-day rolling retention. Test by restoring to a scratch DB.</li><li>From a laptop on a different network, run <code>scripts/smoke_prod.sh</code> with the Worked Example B payload. Assert the lead row and the Slack ping.</li><li>Run <code>EVAL_ENV=prod npm run eval</code> against the live instance. Assert green.</li><li>Author <code>docs/runbook.md</code>: redeploy (git pull + compose up), migrate (migration script invocation), rotate secrets (which file, which container restart), restore from backup (the exact <code>pg_restore</code> command).</li><li>Set up an external uptime ping (UptimeRobot or Cloudflare itself) on the webhook path with a known no-op payload, alerting to email.</li></ol>
+
+  <!-- ============================= DEFINITION OF DONE ============================= -->
+  <h2 id="s6"><span class="sec">§6</span> Definition of Done</h2>
+  <p class="muted">The session ends when every box below is checked. These are stricter than the goal criteria — they include the housekeeping that makes the work durable.</p>
+  <div class="box plain" data-label="Done Means">
+    <ul class="checklist"><li>External smoke test from a non-VPS network: 200 + lead row + Slack ping.</li><li><code>nmap</code> from outside the VPS shows only Cloudflare's edges; no port directly on the VPS public IP is reachable.</li><li>n8n editor not reachable from the public internet.</li><li>Postgres not reachable from the public internet.</li><li>Production eval run: green.</li><li>Backup created last night; restore test performed once and documented.</li><li>Runbook present; a second person could redeploy from it without help.</li><li>Uptime monitor pinging hourly and configured to alert.</li></ul>
+  </div>
+
+  <!-- ============================= RISKS ============================= -->
+  <h2 id="s7"><span class="sec">§7</span> Risks &amp; Pitfalls</h2>
+  <p class="muted">The mistakes that, in practice, derail sessions of this kind. Each is paired with a concrete mitigation rather than a general warning.</p>
+  <table><thead><tr><th class='id'>Risk</th><th>Mitigation</th></tr></thead><tbody><tr><td class='id'>Tunnel ingress too permissive</td><td>A wildcard ingress rule exposes the n8n editor or the metrics endpoint by accident. Use explicit per-path rules; default 404 at the edge.</td></tr><tr><td class='id'>Postgres volume not mounted</td><td>A misconfigured compose file means the DB is in-container and dies with the container, taking every lead with it. Mount a named volume; restart the stack once and confirm data persists.</td></tr><tr><td class='id'>Secrets leaking via exported workflows</td><td>n8n's exported workflow JSON can occasionally inline credentials. Diff before commit; use credential references only; <code>grep -r</code> the repo for token prefixes before pushing.</td></tr><tr><td class='id'>No rollback plan</td><td>If a deploy goes wrong, the only path back is reading the runbook for the first time under stress. Practice a redeploy from scratch once now; time it; record the steps.</td></tr><tr><td class='id'>Backups untested</td><td>An untested backup is not a backup. Restore at least once to a scratch DB and write down the exact commands in the runbook.</td></tr><tr><td class='id'>Eval suite not run against production</td><td>Local-only evals don't prove the production wiring. Run the suite against the live instance with namespaced keys; that is the difference between 'I think it works in prod' and 'I know it works in prod.'</td></tr></tbody></table>
+
+  <!-- ============================= HANDOFF ============================= -->
+  <h2 id="s8"><span class="sec">§8</span> Handoff to the Next Session</h2>
+  <p>Piece I is complete. The deployed instance becomes a referenceable artifact for the portfolio site and a working upstream for Piece II (Document Intelligence / RAG, MICT-RAG-002), which will consume this pipeline's validated leads as source documents. The eval discipline, the containment pattern, and the deployment topology established here are the template the capstone (MICT-FIELD-005) inherits and scales.</p>
+
+  <!-- ============================= FOOTER ============================= -->
+  <div class="footer">
+    MICT-PIPE-001-S05 · Session 5 of 5 · Deployment · jakemorganlabs
+    <em>"One session, one outcome — built to be relied on, not revisited."</em>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,152 +1,162 @@
 # Intake-to-Outbound Intelligence Pipeline
 
-A lead-intelligence pipeline that receives a public form submission, enriches it with web research and a single contained language-model inference, scores it with deterministic rules, and routes it to one of three outbound tiers.
+[![CI](https://github.com/jakemorganlabs/intake-n-outbound.pipeline/actions/workflows/evals.yml/badge.svg)](https://github.com/jakemorganlabs/intake-n-outbound.pipeline/actions/workflows/evals.yml)
+![Status](https://img.shields.io/badge/status-v1.0.0--deployed-brightgreen)
 
-## Model Switch Notice
+> A contained lead-intelligence pipeline: one webhook submission → web research → contained model inference → deterministic scoring → tiered outbound routing. The model is allowed exactly one structured extraction call per lead; its output is validated against a strict JSON Schema before it is permitted to influence anything downstream.
 
-The pipeline previously used **Claude Haiku 3.5** for structured JSON enrichment. Anthropic retired that model on **2026-02-19**, which caused every inference call to fail and dead-lettered all leads to the `MANUAL` tier. We have switched the inference stage to **`google/gemma-4-26B-A4B-it`** served via **DeepInfra's OpenAI-compatible endpoint**. The pipeline is functional again.
+```
+v1.0.0 — deployed and live
+Public endpoint: https://intake.jakemorganlabs.dev/webhook
+Rate limit: 60 requests / minute per IP. Misuse is logged.
+```
+
+---
+
+## What it does
+
+A public form submission arrives via webhook. The pipeline deduplicates it, runs a brief web research query, asks a single structured-language-model call (Google Gemma 4 26B via DeepInfra) to extract firmographic and intent signals, scores the result with deterministic rules, and routes the lead to one of three tiers:
+
+- **HOT**: Instant Slack alert + CRM contact creation
+- **WARM**: Appended to a Google Sheet for batch follow-up
+- **COLD**: Logged only. No outbound action.
+
+If the model's output ever fails schema validation, it is routed to **MANUAL** and the raw payload is preserved for human triage. The entire system lives on a single VPS, behind a Cloudflare Tunnel that publishes exactly one path. No open inbound ports.
+
+---
 
 ## Architecture
 
-```
-[1] Webhook -> [2] HMAC/Normalize -> [3] Dedupe Guard
-                                        |
-[4] Web Research (fail-open) -> [5] Contained Inference (DeepInfra, `google/gemma-4-26B-A4B-it`, temp 0)
-                                        |
-                         [6] Validation Gate (AJV + one repair)
-                                        |
-                         [7] Scoring (pure fn, 0-100)
-                                        |
-                         [8] Router (HOT/WARM/COLD/MANUAL)
-                                        |
-                         [9] Persistence (leads + inference_audit)
+```mermaid
+graph LR
+    A[Public Form] -->|HTTPS POST| B((Cloudflare Tunnel))
+    B --> C[n8n Webhook Trigger]
+    C --> D[Dedupe Guard]
+    D --> E[Web Research]
+    E --> F[Inference Adapter]
+    F -->|DeepInfra<br/>google/gemma-4-26B-A4B-it| G[Gemma 4]
+    G --> F
+    F --> H[Validation Gate]
+    H --> I[Scoring]
+    I --> J[Router]
+    J -->|HOT| K[Slack]
+    J -->|HOT| L[HubSpot CRM]
+    J -->|WARM| M[Google Sheets]
+    J -->|COLD| N[(Postgres Log)]
+    D --> N
+    H -->|fail schema| O[DEAD LETTER]
 ```
 
-## Quick Start (Local)
+The deployment topology is small and deliberate: a single Hetzner VPS, Postgres and n8n as containers, a cloudflared sidecar that publishes only the webhook path, and outbound HTTPS to five named APIs (DeepInfra, Brave Search, Slack, HubSpot, Google Sheets). The whole edge surface area is one URL.
+
+---
+
+## The Measured Bar
+
+| Suite | Cases | Categories | Latest Pass Rate | Gate |
+|-------|-------|-----------|------------------|------|
+| S04 Local | 33 | schema, routing, idempotency, degradation, injection, gibberish, multilingual | 100% (33/33) | CI gates `main` |
+| S04 Prod | __AFTER_DEPLOY__ | Same categories against live endpoint | __AFTER_DEPLOY__ | Operator-reviewed |
+
+Reports: [eval_report_local.md](docs/evidence/eval_report_local.md) | [eval_report_prod.md](docs/evidence/eval_report_prod.md)
+
+---
+
+## Security Posture
+
+- **One public path:** The Cloudflare Tunnel exposes `https://intake.jakemorganlabs.dev/webhook` and returns 404 for everything else. The n8n editor and the database are unreachable from the internet.
+- **Secrets never in the repo:** All credentials live in `deploy/.env.production` on the VPS. `scripts/secret_gate.sh` runs as a pre-commit hook to block accidental commits of secrets. See [`scripts/secret_gate.sh`](scripts/secret_gate.sh).
+- **Earned recovery:** Nightly `pg_dump` with 7-day retention; restore is tested against a scratch container via `deploy/restore.sh`.
+
+---
+
+## Run it yourself
+
+### Local quickstart
 
 ```bash
 cp .env.example .env
-# edit .env with your DATABASE_URL, INFERENCE_API_KEY, SEARCH_API_KEY, WEBHOOK_SECRET
+# edit .env with DATABASE_URL, INFERENCE_API_KEY, SEARCH_API_KEY, WEBHOOK_SECRET
 
 npm install
-npm run migrate                # apply Postgres migrations
-npm test                       # run all unit tests
-npm run validate:schemas       # validate JSON schemas
+npm run migrate                # Postgres migrations
+npm test                       # unit tests (offline)
+npm run validate:schemas       # JSON Schema checks
 npm run smoke                  # end-to-end acceptance test
-npm run eval                   # run eval suite locally (requires live API keys)
-npm start                      # start HTTP server on PORT (default 3001)
+npm run eval                   # eval suite (requires live API keys)
+npm start                      # HTTP server on PORT (default 3001)
 ```
 
-## Deployment (Hetzner VPS)
+### Production
 
-This project is designed to run on a persistent Linux VPS with **systemd**. Secrets stay on the server only — nothing sensitive is committed to GitHub.
+See [`docs/runbook.md`](docs/runbook.md): exact commands for redeploy, migrations, secret rotation, and backup restore. A second person could redeploy from it without help.
 
-### Pipeline flow (production)
+---
+
+## Repo Map
 
 ```
-Tally form -> POST /intake-webhook -> google/gemma-4-26B-A4B-it via DeepInfra (structured JSON)
-  -> Brave Search (web enrichment) -> composite scoring -> route:
-       HOT  -> Slack + HubSpot CRM
-       WARM -> Google Sheets
-       COLD -> Postgres log only
+├── deploy/
+│   ├── docker-compose.yml              # n8n + postgres + cloudflared sidecar
+│   ├── .env.production.example         # every env var documented, all __REPLACE_ME__
+│   ├── cron/pg_dump.sh                 # nightly backup + retention
+│   └── restore.sh                      # test restore into scratch container
+├── src/
+│   ├── pipeline.ts                     # full 9-stage orchestration spine
+│   ├── server.ts                       # Hono webhook receiver
+│   ├── scoring.ts                      # deterministic composite scoring
+│   ├── router.ts                       # confidence-aware tier routing
+│   ├── idempotency.ts                  # stable key derivation
+│   └── adapters/                       # Slack, HubSpot, Sheets, DLQ
+├── evals/
+│   ├── run.ts                          # eval runner (EVAL_ENV=prod aware)
+│   └── fixtures/                       # 33 synthetic eval cases across 7 categories
+├── workflows/
+│   ├── intake_main.json                # n8n workflow export
+│   └── intake_error.json               # dedicated error workflow
+├── schemas/
+│   ├── inference_output.schema.json    # strict validation gate
+│   └── canonical_lead.schema.json      # persisted lead contract
+├── scripts/
+│   ├── secret_gate.sh                  # pre-commit secret scanner
+│   ├── hooks/pre-commit                # committed hook → make hooks
+│   ├── smoke.ts                        # local acceptance test
+│   └── smoke_prod.sh                   # external smoke against live URL
+├── docs/
+│   ├── runbook.md                      # operator reference
+│   ├── evidence/                       # committed proof slots (closeout-evidence branch)
+│   ├── intake_outbound_pipeline_srs_tdd.html  # SRS/TDD v1.0 baselined
+│   └── MICT-PIPE-001-S05_deployment.html     # Session 5 build plan
+└── migrations/                         # 6 SQL migrations
 ```
 
-### First-time VPS setup
+---
 
-SSH into your VPS, then run:
+## Docs Index
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/jakemorganlabs/intake-n-outbound.pipeline/main/scripts/setup-vps.sh -o setup-vps.sh
-bash setup-vps.sh
-```
+| Document | What it is |
+|----------|-----------|
+| [SRS/TDD](https://__OPERATOR__PORTFOLIO_URL__/intake_outbound_pipeline_srs_tdd.html) | Controlled document this build implements (Rev 1.0, baselined) |
+| [docs/runbook.md](docs/runbook.md) | Production redeploy, migrate, rotate, restore commands |
+| [docs/evidence/](docs/evidence/) | Committed proof: evals, smoke, posture |
 
-Or clone the repo and run the script from inside it:
+> Note on the SRS/TDD: GitHub serves committed HTML as raw source. The canonical copy is in `docs/intake_outbound_pipeline_srs_tdd.html`; a rendered version is hosted at the portfolio site.
 
-```bash
-git clone https://github.com/jakemorganlabs/intake-n-outbound.pipeline.git ~/intake-pipeline
-cd ~/intake-pipeline
-bash scripts/setup-vps.sh
-```
+---
 
-The setup script will:
+## Part of a five-piece portfolio
 
-1. Install Node.js 22 and PostgreSQL (if missing)
-2. Clone/pull the repo and run `npm ci` + migrations
-3. **Prompt you one key at a time** for each secret (with a description of what it is for)
-4. Write secrets to `.env` on the VPS (chmod 600, gitignored)
-5. Install and start the `intake-pipeline` systemd service
+> This is **Piece I** — containment: one schema-checked extraction, deterministic core, bounded adapters.
+>
+> Piece II `document-intelligence-rag` · Piece III `shovels_n8n_nodes` · Piece IV `recon_multiagent` · Capstone `fieldops` (link when public)
+>
+> Every repo links its siblings; a reviewer landing anywhere discovers the system. FIELD-005 explicitly reuses this piece's discipline: its contained intake extraction becomes the capstone's intake stage.
 
-### Deploy updates
+---
 
-From your laptop (SSH host is never stored in the repo):
+## Author
 
-```bash
-VPS_HOST=user@your-vps-ip bash scripts/deploy.sh
-```
-
-This pulls latest `main`, runs migrations, and restarts the service.
-
-### Service management
-
-```bash
-sudo systemctl status intake-pipeline
-sudo journalctl -u intake-pipeline -f
-curl http://localhost:3001/health
-```
-
-Point your Tally webhook to `POST https://<your-domain-or-ip>/intake-webhook` (use nginx or a reverse proxy for HTTPS in production).
-
-### CI (GitHub Actions)
-
-GitHub Actions runs **offline checks only** — lint, schema validation, unit tests, and migrations. No API keys are stored in GitHub. Live evals (`npm run eval`) are run locally on the VPS when you choose.
-
-## Key Files
-
-| File | Purpose |
-|---|---|
-| `src/pipeline.ts` | Full orchestration spine - all stages wired |
-| `src/server.ts` | Hono HTTP webhook receiver |
-| `src/cli.ts` | CLI entry for stdin pipeline execution |
-| `src/scoring.ts` | Deterministic 0-100 composite scoring |
-| `src/router.ts` | Confidence-aware tier routing |
-| `src/idempotency.ts` | Key derivation function |
-| `schemas/inference_output.schema.json` | Strict JSON Schema gate for model output |
-| `config/scoring.json` | Versioned weights and factors |
-| `scripts/smoke.ts` | End-to-end acceptance test |
-| `scripts/setup-vps.sh` | Interactive VPS installer + API key prompts |
-| `scripts/deploy.sh` | Pull latest code and restart on VPS |
-| `scripts/pipeline.service` | systemd unit file template |
-| `workflows/intake_main.json` | n8n workflow export |
-
-## Design Principles
-
-- **Containment**: The model is given one job: emit a structured object. Its output is checked against a strict schema before it is allowed to influence anything downstream.
-- **Validation gate**: `additionalProperties: false`, enumerated values, bounded ranges. On failure: one repair, then MANUAL.
-- **Fail-open research**: Web search timeout or error results in a degraded flag; pipeline continues.
-- **Atomic dedupe**: `INSERT ... ON CONFLICT DO NOTHING` against `dedupe` table.
-- **Audit trail**: Every model call writes a row with model id, tokens, latency, validation result, and repair_used flag.
-
-## Core Components
-
-- Four Postgres migrations: `dedupe`, `leads`, `inference_audit`, `dead_letter`.
-- Two JSON Schema documents: `canonical_lead.schema.json`, `inference_output.schema.json`.
-- `scoring.ts`: pure function computing 0-100 composite from validated signals, fully unit-tested.
-- `router.ts`: pure function mapping (composite, confidence) to tier and actions, fully unit-tested.
-- Versioned scoring config externalized.
-- CI workflows (GitHub Actions): offline lint, schema validation, unit tests, and migrations on push — no secrets required.
-- Eval suite: 33 fixtures across 7 categories (schema, routing, idempotency, degradation, injection, gibberish, multilingual).
-- Sample report: `docs/sample_eval_report.md`.
-
-## Pipeline Stages
-
-- Postgres + n8n installed and running.
-- `src/pipeline.ts`: full 9-stage pipeline with typed interfaces and pure/deterministic stages.
-- HMAC verification with timing-safe comparison.
-- Dedupe guard: atomic insert-if-absent, short-circuits duplicates with 200.
-- Research adapter: Brave Search HTTP call with provenance, fail-open on any error.
-- Contained inference: DeepInfra OpenAI-compatible endpoint (`google/gemma-4-26B-A4B-it`, `temperature: 0`, `response_format: json_object`), token and latency capture.
-- Validation gate: strict JSON Schema via AJV draft-2020-12, one repair attempt with safe heuristics, MANUAL on double failure.
-- Scoring and routing wired from core modules with no duplication.
-- Persistence: `leads` + `inference_audit` INSERT with ON CONFLICT UPDATE, always runs even on MANUAL.
-- HTTP server (`src/server.ts`): `POST /intake-webhook` and `GET /health`.
-- Smoke tests (`scripts/smoke.ts` and `smoke.sh`): acceptance criteria covering worked example, duplicate handling, schema repair, double failure, and degraded search.
+**jakemorganlabs**
+- Portfolio: `__OPERATOR_URL__`
+- LinkedIn: `__OPERATOR_URL__`
+- Contact: `__OPERATOR_EMAIL__`

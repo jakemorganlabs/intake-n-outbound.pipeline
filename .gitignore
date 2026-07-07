@@ -7,3 +7,11 @@ dist
 coverage
 .vscode
 *.tsbuildinfo
+
+# S05 deploy hygiene
+.env.*
+!.env.*.example
+*.pem
+*.key
+deploy/cloudflared/credentials*.json
+backups/

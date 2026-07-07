@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Run secret gate before every commit.
+bash "$(dirname "$0")/../scripts/secret_gate.sh"

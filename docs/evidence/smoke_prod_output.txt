@@ -1,0 +1,9 @@
+# External Smoke Test Output
+
+__AFTER_DEPLOY__: run `bash scripts/smoke_prod.sh` from a laptop on a different network and paste the transcript here (redact any webhook IDs).
+
+---
+
+```
+# Replace with actual curl output after deployment.
+```

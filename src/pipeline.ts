@@ -1,3 +1,13 @@
+/**
+ * Full pipeline orchestration spine.
+ * Invariant: Every lead flows through exactly the same ordered stages, and every stage's output
+ * is fully defined before the next stage runs. The model is allowed one call; its output is
+ * validated against a strict schema before reaching scoring/router. On any failure short of
+ * total system collapse, the lead is persisted and routed to a safe tier.
+ * This module deliberately does NOT include business logic inside try/catch wrappers;
+ * scoring and routing are delegated to pure, unit-tested functions.
+ */
+
 // Full pipeline: ingestion -> HMAC -> normalize -> dedupe -> research -> inference -> gate -> scoring -> router -> persist -> dispatch
 
 import { createHash, createHmac } from 'crypto';

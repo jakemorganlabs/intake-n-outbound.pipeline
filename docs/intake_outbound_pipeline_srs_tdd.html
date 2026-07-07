@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Intake-to-Outbound Intelligence Pipeline — SRS &amp; TDD</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%2280%22 font-size=%2290%22>●</text></svg>">
+<style>
+  :root {
+    --ink: #0a0a0a;
+    --paper: #fafaf7;
+    --paper-2: #f0efea;
+    --paper-3: #e8e7e1;
+    --rule: #1a1a1a;
+    --rule-soft: rgba(10,10,10,0.12);
+    --rule-softer: rgba(10,10,10,0.07);
+    --dim: #555;
+    --dimmer: #888;
+    --done: #999;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.7;
+    min-height: 100vh;
+    padding: 56px 40px 140px;
+    background-image: radial-gradient(circle at 1px 1px, rgba(10,10,10,0.04) 1px, transparent 0);
+    background-size: 24px 24px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container { max-width: 860px; margin: 0 auto; }
+
+  /* ---------- LINKS ---------- */
+  a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--rule-soft); }
+  a:hover { border-bottom-color: var(--ink); }
+
+  /* ---------- MASTHEAD ---------- */
+  .masthead {
+    border-top: 2px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    padding: 24px 0 30px;
+    margin-bottom: 36px;
+  }
+  .masthead-meta {
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+    font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
+    margin-bottom: 26px; color: var(--dim);
+  }
+  .doctype {
+    font-size: 10px; letter-spacing: 0.28em; text-transform: uppercase;
+    color: var(--dim); margin-bottom: 18px;
+  }
+  .doctype span { color: var(--ink); }
+  h1.title {
+    font-family: 'Cormorant Garamond', serif; font-weight: 500;
+    font-size: clamp(40px, 6.5vw, 68px); line-height: 0.96;
+    letter-spacing: -0.02em; margin-bottom: 16px;
+  }
+  .subtitle {
+    font-family: 'Cormorant Garamond', serif; font-style: italic;
+    font-size: 21px; color: var(--dim); margin-bottom: 26px; max-width: 60ch;
+  }
+  .id-grid {
+    display: grid; grid-template-columns: repeat(4, auto); gap: 28px;
+    font-size: 11px; letter-spacing: 0.05em; color: var(--dim);
+  }
+  .id-grid .k { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--dimmer); display: block; margin-bottom: 3px; }
+  .id-grid .v { color: var(--ink); }
+
+  /* ---------- ABSTRACT ---------- */
+  .abstract {
+    font-family: 'Cormorant Garamond', serif; font-size: 18px;
+    line-height: 1.55; color: var(--dim); margin-bottom: 30px;
+    border-left: 2px solid var(--ink); padding: 4px 0 4px 24px;
+  }
+  .abstract strong { color: var(--ink); font-weight: 600; }
+
+  /* ---------- FLOATING-LABEL BOX ---------- */
+  .box {
+    border: 1px solid var(--rule); padding: 28px 30px 24px;
+    margin: 34px 0; position: relative; background: var(--paper-2);
+  }
+  .box::before {
+    content: attr(data-label); position: absolute; top: -8px; left: 22px;
+    background: var(--paper); padding: 0 12px;
+    font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink);
+  }
+  .box.plain { background: transparent; }
+
+  /* ---------- INVERTED THESIS BLOCK ---------- */
+  .thesis {
+    background: var(--ink); color: var(--paper); padding: 34px 34px 30px;
+    margin: 40px 0; position: relative;
+  }
+  .thesis::before {
+    content: attr(data-label); position: absolute; top: -8px; left: 24px;
+    background: var(--paper); color: var(--ink); padding: 0 12px;
+    font-size: 10px; letter-spacing: 0.2em; border: 1px solid var(--ink);
+  }
+  .thesis h3 { color: var(--paper); border: none; margin: 0 0 12px; }
+  .thesis p { color: rgba(250,250,247,0.82); font-size: 13px; }
+  .thesis p + p { margin-top: 12px; }
+  .thesis strong { color: var(--paper); }
+
+  /* ---------- PART DIVIDER ---------- */
+  .part {
+    display: flex; align-items: baseline; gap: 24px;
+    margin: 78px 0 10px; padding-bottom: 16px; border-bottom: 1px solid var(--rule);
+  }
+  .part:first-of-type { margin-top: 56px; }
+  .part-num {
+    font-family: 'Cormorant Garamond', serif; font-style: italic;
+    font-size: 54px; line-height: 1; font-weight: 500;
+  }
+  .part-title {
+    font-family: 'Cormorant Garamond', serif; font-size: 27px; font-weight: 500;
+    letter-spacing: -0.01em; flex: 1;
+  }
+  .part-meta { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--dim); white-space: nowrap; }
+  .part-desc {
+    font-family: 'Cormorant Garamond', serif; font-style: italic;
+    font-size: 17px; color: var(--dim); margin: 16px 0 40px; padding-left: 2px;
+  }
+
+  /* ---------- HEADINGS ---------- */
+  h2 {
+    font-family: 'Cormorant Garamond', serif; font-weight: 500; font-size: 25px;
+    letter-spacing: -0.01em; margin: 52px 0 8px; padding-bottom: 10px;
+    border-bottom: 1px solid var(--rule); display: flex; align-items: baseline; gap: 14px;
+  }
+  h2 .sec { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; color: var(--dim); letter-spacing: 0.05em; }
+  h3 {
+    font-family: 'Cormorant Garamond', serif; font-weight: 600; font-size: 19px;
+    margin: 32px 0 6px; display: flex; align-items: baseline; gap: 12px;
+  }
+  h3 .sec { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; color: var(--dimmer); letter-spacing: 0.05em; }
+  h4 {
+    font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--dim); margin: 24px 0 8px; font-weight: 600;
+  }
+
+  /* ---------- PROSE ---------- */
+  p { font-size: 13px; margin: 12px 0; }
+  p.lead { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 16px; color: var(--dim); }
+  strong { font-weight: 600; }
+  em { font-style: italic; }
+  .muted { color: var(--dim); }
+
+  ul, ol { margin: 12px 0 12px; padding-left: 0; list-style: none; }
+  li { font-size: 13px; margin-bottom: 9px; padding-left: 20px; position: relative; line-height: 1.55; }
+  ul > li::before { content: "—"; position: absolute; left: 0; color: var(--dimmer); }
+  ol { counter-reset: ol; }
+  ol > li { counter-increment: ol; }
+  ol > li::before { content: counter(ol) "."; position: absolute; left: 0; color: var(--dimmer); font-size: 11px; }
+  li strong { font-weight: 600; }
+
+  /* ---------- INLINE CODE ---------- */
+  code {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    background: var(--paper-2); padding: 1px 5px; border: 1px solid var(--rule-soft); white-space: nowrap;
+  }
+
+  /* ---------- CODE / DIAGRAM BLOCKS ---------- */
+  pre {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px; line-height: 1.55;
+    background: var(--paper-2); border: 1px solid var(--rule-soft);
+    padding: 18px 20px; margin: 18px 0; overflow-x: auto; white-space: pre;
+    position: relative;
+  }
+  pre.code { background: #0e0e0d; color: #e8e7e1; border-color: #0e0e0d; }
+  pre.code .cm { color: #8a8a86; }
+  pre .lbl {
+    display: block; font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--dimmer); margin-bottom: 12px;
+  }
+  pre.code .lbl { color: #7a7a76; }
+
+  /* ---------- TABLES ---------- */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 18px 0; }
+  caption { caption-side: top; text-align: left; font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--dimmer); margin-bottom: 10px; }
+  th { text-align: left; font-size: 9px; letter-spacing: 0.13em; text-transform: uppercase; color: var(--dim); font-weight: 500; border-bottom: 1px solid var(--rule); padding: 9px 10px; vertical-align: bottom; }
+  td { border-bottom: 1px solid var(--rule-softer); padding: 10px 10px; vertical-align: top; line-height: 1.5; }
+  tr:hover td { background: rgba(10,10,10,0.015); }
+  td.id, th.id { white-space: nowrap; font-weight: 600; width: 1%; }
+  td.lvl { white-space: nowrap; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .lvl-must { font-weight: 600; color: var(--ink); }
+  .lvl-should { color: var(--dim); }
+  .lvl-may { color: var(--dimmer); }
+  .tier { font-weight: 600; white-space: nowrap; }
+
+  /* ---------- TOC ---------- */
+  .toc { columns: 2; column-gap: 48px; margin: 8px 0 12px; }
+  .toc ol, .toc ul { list-style: none; margin: 0; padding: 0; }
+  .toc li { break-inside: avoid; font-size: 12px; margin-bottom: 7px; padding-left: 0; }
+  .toc li::before { content: none; }
+  .toc .num { color: var(--dimmer); margin-right: 8px; font-size: 11px; }
+  .toc a { border: none; }
+  .toc a:hover { border-bottom: 1px solid var(--ink); }
+  .toc .grp { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 15px; color: var(--ink); margin: 14px 0 8px; break-after: avoid; }
+  .toc .grp:first-child { margin-top: 0; }
+  @media (max-width: 720px){ .toc { columns: 1; } }
+
+  /* ---------- KEY-VALUE GRID ---------- */
+  .kv { display: grid; grid-template-columns: 180px 1fr; gap: 0; margin: 14px 0; font-size: 12px; border-top: 1px solid var(--rule-soft); }
+  .kv dt { padding: 9px 12px 9px 0; color: var(--dim); border-bottom: 1px solid var(--rule-softer); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .kv dd { padding: 9px 0; border-bottom: 1px solid var(--rule-softer); }
+  @media (max-width: 600px){ .kv { grid-template-columns: 1fr; } .kv dd { padding-top: 0; padding-bottom: 12px; } }
+
+  /* ---------- FOOTER ---------- */
+  .footer {
+    margin-top: 80px; border-top: 1px solid var(--rule); padding-top: 24px;
+    text-align: center; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dimmer);
+  }
+  .footer em { display: block; font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 17px; text-transform: none; letter-spacing: 0; color: var(--dim); margin-top: 14px; }
+
+  hr.soft { border: none; border-top: 1px solid var(--rule-soft); margin: 30px 0; }
+
+  /* ---------- PRINT ---------- */
+  @media print {
+    body { background: #fff; padding: 0; font-size: 10.5pt; }
+    pre.code { background: #fff; color: #000; border: 1px solid #999; }
+    pre.code .cm { color: #555; }
+    .thesis { background: #fff; color: #000; border: 2px solid #000; }
+    .thesis h3, .thesis p, .thesis strong { color: #000; }
+    .part { break-before: page; }
+    .part:first-of-type { break-before: avoid; }
+    h2, h3 { break-after: avoid; }
+    pre, table, .box, .thesis { break-inside: avoid; }
+    a { border: none; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ============================= MASTHEAD ============================= -->
+  <div class="masthead">
+    <div class="masthead-meta">
+      <span>jakemorganlabs · portfolio piece i</span>
+      <span>controlled document</span>
+    </div>
+    <div class="doctype"><span>Software Requirements Specification</span> &nbsp;·&nbsp; <span>Technical Design Document</span></div>
+    <h1 class="title">Intake-to-Outbound Intelligence Pipeline</h1>
+    <div class="subtitle">A lead-intelligence pipeline that is deterministic at every step but one — and never trusts the one.</div>
+    <div class="id-grid">
+      <div><span class="k">Doc ID</span><span class="v">MICT-PIPE-001</span></div>
+      <div><span class="k">Version</span><span class="v">1.0 — Baselined</span></div>
+      <div><span class="k">Author</span><span class="v">Jake Morgan</span></div>
+      <div><span class="k">Status</span><span class="v">Approved for build</span></div>
+    </div>
+  </div>
+
+  <p class="abstract">This document specifies and designs a production lead-handling system: a public form submission is captured, enriched with web research and a single language-model extraction, scored by deterministic rules, and routed to one of three outbound actions. The system's defining property is <strong>inference containment</strong> — the model is confined to one schema-bounded call whose output is validated before it is allowed to influence anything, so a malformed or low-confidence response degrades safely instead of propagating. The document is in two parts: <strong>Part I</strong> states <em>what</em> the system must do (SRS); <strong>Part II</strong> states <em>how</em> it is built (TDD).</p>
+
+  <div class="box" data-label="Document Control">
+    <table style="margin-top:4px">
+      <caption>Revision history</caption>
+      <thead><tr><th class="id">Rev</th><th>Date</th><th>Author</th><th>Summary of change</th></tr></thead>
+      <tbody>
+        <tr><td class="id">0.1</td><td>2026-05-20</td><td>J. Morgan</td><td>Initial draft — scope, intake + single-inference enrichment.</td></tr>
+        <tr><td class="id">0.7</td><td>2026-05-26</td><td>J. Morgan</td><td>Added web-research enrichment, deterministic scoring, three-way routing, idempotency.</td></tr>
+        <tr><td class="id">1.0</td><td>2026-05-28</td><td>J. Morgan</td><td>Baselined. Failure matrix, eval strategy, deployment topology, traceability matrix complete.</td></tr>
+      </tbody>
+    </table>
+    <div class="kv" style="margin-top:22px">
+      <dt>Classification</dt><dd>Public — portfolio artifact. Contains no live customer data; worked examples are synthetic.</dd>
+      <dt>Supersedes</dt><dd>None.</dd>
+      <dt>Related</dt><dd>Piece II (Document Intelligence / RAG) consumes this pipeline's output as an upstream source. The eval suite seeded here (§18) is the nucleus of the capstone CI gate.</dd>
+      <dt>Req. keywords</dt><dd><strong>MUST / SHOULD / MAY</strong> are used per RFC&nbsp;2119 to denote requirement strength.</dd>
+    </div>
+  </div>
+
+  <!-- ============================= THESIS ============================= -->
+  <div class="thesis" data-label="The Engineering Idea">
+    <h3>The model proposes structure; deterministic code disposes.</h3>
+    <p>Most "AI-powered" pipelines fail in production because the language model touches everything — it parses, decides, and acts in one ungoverned step, and when it hallucinates a field or returns broken JSON, that error flows straight into a customer-facing action. This system inverts that. The model is given exactly one closed task: read the lead and emit a fixed set of fields. Its output is checked against a strict schema <em>before</em> it is permitted to affect anything downstream. The decisions that drive business action — the score, the route, the outbound call — are pure functions of <strong>validated</strong> data, never of raw model output.</p>
+    <p>The result is a system with a small, named blast radius. There is exactly one place where non-determinism enters, it is wrapped in a validation gate, and every failure of that gate has a defined safe fallback. That is the whole thesis, and it is what this document exists to make legible.</p>
+  </div>
+
+  <!-- ============================= TOC ============================= -->
+  <h2><span class="sec">§0</span> Contents</h2>
+  <div class="toc">
+    <div class="grp">Part I — Requirements</div>
+    <ul>
+      <li><span class="num">1</span><a href="#s1">Introduction</a></li>
+      <li><span class="num">2</span><a href="#s2">Overall Description</a></li>
+      <li><span class="num">3</span><a href="#s3">Functional Requirements</a></li>
+      <li><span class="num">4</span><a href="#s4">Non-Functional Requirements</a></li>
+      <li><span class="num">5</span><a href="#s5">External Interface Requirements</a></li>
+      <li><span class="num">6</span><a href="#s6">Data Requirements</a></li>
+      <li><span class="num">7</span><a href="#s7">Acceptance Criteria</a></li>
+    </ul>
+    <div class="grp">Part II — Design</div>
+    <ul>
+      <li><span class="num">8</span><a href="#s8">Architecture Overview</a></li>
+      <li><span class="num">9</span><a href="#s9">The Containment Principle</a></li>
+      <li><span class="num">10</span><a href="#s10">Component Design</a></li>
+      <li><span class="num">11</span><a href="#s11">Data Model &amp; Schemas</a></li>
+      <li><span class="num">12</span><a href="#s12">Processing Sequence</a></li>
+      <li><span class="num">13</span><a href="#s13">Idempotency &amp; Exactly-Once Outcomes</a></li>
+      <li><span class="num">14</span><a href="#s14">Failure Modes &amp; Error Handling</a></li>
+      <li><span class="num">15</span><a href="#s15">Prompt &amp; Inference Configuration</a></li>
+      <li><span class="num">16</span><a href="#s16">Security Design</a></li>
+      <li><span class="num">17</span><a href="#s17">Observability &amp; Cost</a></li>
+      <li><span class="num">18</span><a href="#s18">Evaluation &amp; Test Strategy</a></li>
+      <li><span class="num">19</span><a href="#s19">Deployment Topology</a></li>
+      <li><span class="num">20</span><a href="#s20">Extensibility &amp; Future Work</a></li>
+    </ul>
+    <div class="grp">Appendices</div>
+    <ul>
+      <li><span class="num">A</span><a href="#sa">Requirement Traceability Matrix</a></li>
+      <li><span class="num">B</span><a href="#sb">Worked Example (end-to-end)</a></li>
+      <li><span class="num">C</span><a href="#sc">Glossary</a></li>
+    </ul>
+  </div>
+
+  <!-- ====================================================================== -->
+  <!-- PART I                                                                  -->
+  <!-- ====================================================================== -->
+  <div class="part" id="part1">
+    <div class="part-num">I</div>
+    <div class="part-title">Software Requirements Specification</div>
+    <div class="part-meta">What the system must do</div>
+  </div>
+  <div class="part-desc">Defines scope, actors, and the complete set of functional and non-functional requirements the implementation in Part II is obligated to satisfy.</div>
+
+  <!-- ---------- 1 INTRODUCTION ---------- -->
+  <h2 id="s1"><span class="sec">§1</span> Introduction</h2>
+
+  <h3><span class="sec">1.1</span> Purpose</h3>
+  <p>This specification defines the requirements for an automated system that captures inbound leads from a public web form, enriches each lead with external research and a single bounded language-model inference, scores the lead for sales fit using deterministic rules, and routes it to the appropriate outbound action. It is the authoritative reference for what the system must do and the basis against which the build is accepted.</p>
+
+  <h3><span class="sec">1.2</span> Scope</h3>
+  <h4>In scope</h4>
+  <ul>
+    <li>Webhook ingestion of structured form submissions and their validation.</li>
+    <li>Deduplication so that webhook retries and double-submits produce a single outcome.</li>
+    <li>Enrichment by (a) web research and (b) one schema-constrained model call that extracts firmographic and intent signals.</li>
+    <li>A deterministic composite fit score and a three-tier routing decision.</li>
+    <li>Outbound delivery to a chat channel, a CRM, and a spreadsheet of record.</li>
+    <li>Durable persistence of every lead with full provenance, plus error capture, alerting, and observability.</li>
+  </ul>
+  <h4>Out of scope</h4>
+  <ul>
+    <li>The marketing form's own design and hosting (an external form provider is assumed).</li>
+    <li>Two-way reply handling, nurture sequencing, or any conversational follow-up.</li>
+    <li>Authentication of prospects, billing, or any UI beyond an internal observability view.</li>
+    <li>Multi-tenant operation; the system serves a single sending organization.</li>
+  </ul>
+
+  <h3><span class="sec">1.3</span> Intended Audience</h3>
+  <p>Hiring reviewers and engineers evaluating the design; the implementer (the author) during build; and any future maintainer extending the pipeline. No prior familiarity with the form provider or the orchestration tool is assumed — interfaces are specified in §5.</p>
+
+  <h3><span class="sec">1.4</span> Definitions, Acronyms &amp; Abbreviations</h3>
+  <p>A full glossary appears in Appendix C. The four terms that recur most: <strong>containment</strong> (confining non-determinism to one validated step), the <strong>validation gate</strong> (the schema check that model output must pass), <strong>idempotency key</strong> (the stable token that makes reprocessing safe), and <strong>provenance</strong> (the per-field record of where a value came from).</p>
+
+  <h3><span class="sec">1.5</span> References &amp; Standards</h3>
+  <ul>
+    <li>RFC&nbsp;2119 — keyword strength (MUST / SHOULD / MAY).</li>
+    <li>JSON Schema, draft 2020-12 — the contract format for the inference output.</li>
+    <li>The orchestration platform's webhook, HTTP, and error-workflow primitives (§5, §19).</li>
+    <li>The model provider's structured-output (tool-use) interface (§15).</li>
+  </ul>
+
+  <h3><span class="sec">1.6</span> Document Conventions</h3>
+  <p>Requirements carry stable identifiers of the form <code>FR-XX-n</code> (functional, grouped by area) and <code>NFR-XX-n</code> (non-functional). Each requirement states a single testable obligation and a strength keyword. Appendix A traces every identifier to the design section and component that satisfies it.</p>
+
+  <!-- ---------- 2 OVERALL DESCRIPTION ---------- -->
+  <h2 id="s2"><span class="sec">§2</span> Overall Description</h2>
+
+  <h3><span class="sec">2.1</span> Product Perspective</h3>
+  <p>The pipeline is a self-contained, event-driven service triggered by an HTTP webhook. It has no interactive front end of its own; its "users" are an upstream form, three downstream systems, and an operator who reads its logs. It is designed to run as a single self-hosted orchestration workflow with a relational store for state, behind a public tunnel that exposes only the webhook endpoint (§19).</p>
+
+  <h3><span class="sec">2.2</span> Product Functions</h3>
+  <p>At a glance, the system: receives → validates → deduplicates → researches → infers → validates output → scores → routes → delivers → persists, with any step's failure diverted to a dead-letter path and alert. Each verb maps to a component in §10 and a requirement group in §3.</p>
+
+  <h3><span class="sec">2.3</span> Actors &amp; User Classes</h3>
+  <table>
+    <thead><tr><th>Actor</th><th>Type</th><th>Interaction</th></tr></thead>
+    <tbody>
+      <tr><td>Prospect</td><td>External, human</td><td>Submits the public form. Never sees the system directly.</td></tr>
+      <tr><td>Sales / Ops</td><td>Internal, human</td><td>Receives hot-lead alerts and CRM records; reads the warm-lead sheet.</td></tr>
+      <tr><td>Operator</td><td>Internal, human</td><td>Monitors metrics, inspects the audit log, resolves dead-lettered items.</td></tr>
+      <tr><td>Form provider</td><td>External, system</td><td>Fires the inbound webhook; may retry on non-2xx.</td></tr>
+      <tr><td>Model &amp; search APIs</td><td>External, system</td><td>Provide inference and research; both may be slow or unavailable.</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="sec">2.4</span> Operating Environment</h3>
+  <p>A containerized orchestration runtime and a relational database, co-located on a single small virtual server. Outbound network access to the model, search, chat, CRM, and spreadsheet APIs is required. The public webhook is exposed through an encrypted tunnel rather than an open inbound port (§16, §19).</p>
+
+  <h3><span class="sec">2.5</span> Design &amp; Implementation Constraints</h3>
+  <ul>
+    <li>Exactly <strong>one</strong> language-model call per lead under normal operation; a bounded repair retry is the only permitted second call (§15).</li>
+    <li>Scoring and routing MUST be deterministic and free of model calls.</li>
+    <li>Secrets MUST NOT appear in source, logs, or exported state.</li>
+    <li>The system MUST run within a hobby-tier server's resources and a small, predictable per-lead API budget (§17).</li>
+  </ul>
+
+  <h3><span class="sec">2.6</span> Assumptions &amp; Dependencies</h3>
+  <ul>
+    <li>The form provider sends a stable, unique submission identifier with each webhook (the basis for idempotency, §13). If absent, a derived key is used as fallback.</li>
+    <li>The model provider supports forced structured output via a tool/function interface (§15).</li>
+    <li>The downstream chat, CRM, and spreadsheet systems expose authenticated write APIs.</li>
+  </ul>
+
+  <!-- ---------- 3 FUNCTIONAL REQUIREMENTS ---------- -->
+  <h2 id="s3"><span class="sec">§3</span> Functional Requirements</h2>
+  <p class="muted">Grouped by pipeline stage. Strength per RFC&nbsp;2119.</p>
+
+  <h3><span class="sec">3.1</span> Intake &amp; Ingestion</h3>
+  <table>
+    <thead><tr><th class="id">ID</th><th>Requirement</th><th class="lvl">Lvl</th></tr></thead>
+    <tbody>
+      <tr><td class="id">FR-IN-1</td><td>The system MUST expose a single HTTPS webhook endpoint that accepts the form provider's submission payload.</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">FR-IN-2</td><td>The system MUST verify the request's authenticity (shared secret or signature) and reject unauthenticated requests with HTTP 401.</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">FR-IN-3</td><td>The system MUST validate that required fields (contact name, email, message) are present and well-formed; missing or malformed payloads are rejected with HTTP 400 and logged, with no further processing.</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">FR-IN-4</td><td>The system MUST normalize raw fields (trim, lower-case email, derive the email domain) into a canonical shape before enrichment.</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">FR-IN-5</td><td>The system SHOULD acknowledge a valid submission with HTTP 200 promptly and continue processing asynchronously, so the form provider is not held open for the full enrichment latency.</td><td class="lvl"><span class="lvl-should">Should</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="sec">3.2</span> Deduplication &amp; Idempotency</h3>
+  <table>
+    <thead><tr><th class="id">ID</th><th>Requirement</th><th class="lvl">Lvl</th></tr></thead>
+    <tbody>
+      <tr><td class="id">FR-ID-1</td><td>The system MUST derive an idempotency key from the provider's stable submission identifier (or, if absent, a hash of email + form + submission time).</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">FR-ID-2</td><td>The system MUST process each idempotency key at most once: a repeat key short-circuits to HTTP 200 with no re-enrichment and no duplicate outbound action.</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">FR-ID-3</td><td>The dedupe check MUST be atomic (insert-if-absent), so two concurrent deliveries of the same key cannot both proceed.</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="sec">3.3</span> Enrichment — Web Research</h3>
+  <table>
+    <thead><tr><th class="id">ID</th><th>Requirement</th><th class="lvl">Lvl</th></tr></thead>
+    <tbody>
+      <tr><td class="id">FR-WR-1</td><td>The system MUST query a web-search provider for context on the lead's company/domain and attach the results to the lead record.</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">FR-WR-2</td><td>Each research call MUST enforce a timeout and a bounded retry; on exhaustion the system MUST proceed with empty/partial research and mark the lead's research status as <code>degraded</code> rather than failing the lead.</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">FR-WR-3</td><td>Research output MUST be tagged with its source and fetch time (provenance) so a reviewer can tell model-derived fields from web-derived ones.</td><td class="lvl"><span class="lvl-should">Should</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="sec">3.4</span> Enrichment — Contained Inference</h3>
+  <table>
+    <thead><tr><th class="id">ID</th><th>Requirement</th><th class="lvl">Lvl</th></tr></thead>
+    <tbody>
+      <tr><td class="id">FR-AI-1</td><td>The system MUST make exactly one language-model call per lead that extracts a fixed set of fields: company size, industry, four intent signals, a short summary, and a self-reported confidence.</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">FR-AI-2</td><td>The model MUST be constrained to emit only the defined structured object (via a forced tool/function call); free-form prose responses MUST NOT be accepted.</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">FR-AI-3</td><td>Model output MUST be validated against a strict JSON Schema (enumerated values; <code>additionalProperties:false</code>) before influencing any later step.</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">FR-AI-4</td><td>On a schema violation the system MUST attempt at most one corrective re-call; if it still fails, the lead is routed to MANUAL (§3.6) with the raw output captured. The model MUST NOT be retried unboundedly.</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">FR-AI-5</td><td>The model MUST be instructed to return <code>unknown</code>/<code>null</code> for fields it cannot ground, rather than guessing, and to calibrate <code>confidence</code> accordingly.</td><td class="lvl"><span class="lvl-should">Should</span></td></tr>
+      <tr><td class="id">FR-AI-6</td><td>The exact model identifier and inference parameters used MUST be recorded on the lead for auditability (§17).</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="sec">3.5</span> Scoring</h3>
+  <table>
+    <thead><tr><th class="id">ID</th><th>Requirement</th><th class="lvl">Lvl</th></tr></thead>
+    <tbody>
+      <tr><td class="id">FR-SC-1</td><td>The system MUST compute a composite fit score in the range 0–100 as a deterministic weighted function of the validated signals.</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">FR-SC-2</td><td>The scoring weights and value mappings MUST be explicit, versioned configuration — not embedded magic numbers scattered through code.</td><td class="lvl"><span class="lvl-should">Should</span></td></tr>
+      <tr><td class="id">FR-SC-3</td><td>The per-component contributions MUST be persisted alongside the composite so any score is fully explainable after the fact.</td><td class="lvl"><span class="lvl-should">Should</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="sec">3.6</span> Routing &amp; Outbound</h3>
+  <table>
+    <thead><tr><th class="id">ID</th><th>Requirement</th><th class="lvl">Lvl</th></tr></thead>
+    <tbody>
+      <tr><td class="id">FR-RT-1</td><td>The system MUST route each lead to exactly one tier: <strong>HOT</strong>, <strong>WARM</strong>, <strong>COLD</strong>, or <strong>MANUAL</strong>.</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">FR-RT-2</td><td>HOT leads MUST trigger a chat-channel alert and the creation of a CRM record.</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">FR-RT-3</td><td>WARM leads MUST be appended to the spreadsheet of record; COLD leads MUST be logged only (no outbound action).</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">FR-RT-4</td><td>Routing MUST be confidence-aware: a high composite paired with low model confidence MUST be capped at WARM rather than auto-firing the HOT path.</td><td class="lvl"><span class="lvl-should">Should</span></td></tr>
+      <tr><td class="id">FR-RT-5</td><td>An outbound delivery failure MUST NOT lose the lead: the record persists, the item is dead-lettered, and an alert is raised.</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="sec">3.7</span> Persistence &amp; Audit</h3>
+  <table>
+    <thead><tr><th class="id">ID</th><th>Requirement</th><th class="lvl">Lvl</th></tr></thead>
+    <tbody>
+      <tr><td class="id">FR-PS-1</td><td>Every lead MUST be persisted as a single canonical record capturing raw submission, normalized fields, research, enrichment, score, routing, status, and any errors.</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">FR-PS-2</td><td>Each language-model call MUST be logged as an audit record (model, parameters, token counts, latency, validation result, whether a repair was used).</td><td class="lvl"><span class="lvl-should">Should</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="sec">3.8</span> Error Handling &amp; Recovery</h3>
+  <table>
+    <thead><tr><th class="id">ID</th><th>Requirement</th><th class="lvl">Lvl</th></tr></thead>
+    <tbody>
+      <tr><td class="id">FR-ER-1</td><td>The system MUST have a single error path that captures the failing lead, its stage, and the error into a dead-letter store.</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">FR-ER-2</td><td>The system MUST distinguish transient failures (timeouts, 429s — retry) from terminal ones (auth/credit errors, schema failures — escalate) and act accordingly.</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">FR-ER-3</td><td>If the state store is unavailable, the system MUST fail closed (return a retryable error to the provider) rather than processing without deduplication.</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+    </tbody>
+  </table>
+
+  <!-- ---------- 4 NON-FUNCTIONAL ---------- -->
+  <h2 id="s4"><span class="sec">§4</span> Non-Functional Requirements</h2>
+  <table>
+    <thead><tr><th class="id">ID</th><th>Requirement</th><th class="lvl">Lvl</th></tr></thead>
+    <tbody>
+      <tr><td class="id">NFR-PE-1</td><td><strong>Performance.</strong> End-to-end processing SHOULD complete within 30&nbsp;s at the 95th percentile; the two external calls (research, inference) dominate the budget (§12).</td><td class="lvl"><span class="lvl-should">Should</span></td></tr>
+      <tr><td class="id">NFR-RE-1</td><td><strong>Reliability.</strong> No accepted lead may be silently lost. Combined with idempotency, processing is at-least-once with exactly-once <em>outcomes</em> (§13).</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">NFR-RE-2</td><td><strong>Graceful degradation.</strong> Failure of a non-critical dependency (web search) MUST degrade quality, not availability.</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">NFR-SE-1</td><td><strong>Security.</strong> The webhook MUST authenticate callers; all secrets MUST live in environment/secret storage; API credentials MUST be least-privilege (§16).</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">NFR-SE-2</td><td><strong>Privacy.</strong> Lead PII MUST be confined to the record store and the named downstream systems; it MUST NOT appear in third-party logs or in exported diagnostic state.</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">NFR-OB-1</td><td><strong>Observability.</strong> Every execution MUST emit a structured log keyed by a traceable execution id, with per-stage timings and final disposition (§17).</td><td class="lvl"><span class="lvl-should">Should</span></td></tr>
+      <tr><td class="id">NFR-OB-2</td><td>The system SHOULD surface metrics (throughput, inference-success rate, schema-violation rate, route distribution, daily cost) and alert when thresholds are breached.</td><td class="lvl"><span class="lvl-should">Should</span></td></tr>
+      <tr><td class="id">NFR-CO-1</td><td><strong>Cost.</strong> Per-lead cost MUST be bounded and predictable: one small-model call plus a fixed number of search queries (§17).</td><td class="lvl"><span class="lvl-must">Must</span></td></tr>
+      <tr><td class="id">NFR-MA-1</td><td><strong>Maintainability.</strong> Scoring weights, routing thresholds, and the output schema MUST be externalized and versioned so they change without rewiring logic.</td><td class="lvl"><span class="lvl-should">Should</span></td></tr>
+      <tr><td class="id">NFR-MA-2</td><td><strong>Portability.</strong> The model and search providers SHOULD be swappable behind their adapters without changing scoring, routing, or persistence.</td><td class="lvl"><span class="lvl-should">Should</span></td></tr>
+    </tbody>
+  </table>
+
+  <!-- ---------- 5 INTERFACES ---------- -->
+  <h2 id="s5"><span class="sec">§5</span> External Interface Requirements</h2>
+
+  <h3><span class="sec">5.1</span> Intake — Form Webhook (inbound)</h3>
+  <p>HTTPS <code>POST</code>, JSON body containing the submission fields and a stable submission id. Authenticated by shared secret/signature (FR-IN-2). Responds 200 on accept, 400 on malformed, 401 on auth failure, 503 when the state store is down (FR-ER-3). Idempotent under retry (§13).</p>
+
+  <h3><span class="sec">5.2</span> Inference — Model Provider API (outbound)</h3>
+  <p>Messages/completions endpoint with a <strong>forced tool call</strong> whose input schema is the enrichment contract (§11.2). Parameters: pinned small model, <code>temperature 0</code>, bounded <code>max_tokens</code>. Timeout and bounded repair retry per FR-AI-4. Errors are typed: 429 → backoff; 401/402 → terminal escalate.</p>
+
+  <h3><span class="sec">5.3</span> Web Research — Search Provider API (outbound)</h3>
+  <p>Query endpoint returning ranked results for a company/domain query. Per-call timeout with one retry; failure degrades the lead, never fails it (FR-WR-2). Quota-managed as the dominant variable cost.</p>
+
+  <h3><span class="sec">5.4–5.6</span> Outbound — Chat, CRM, Spreadsheet</h3>
+  <ul>
+    <li><strong>Chat channel:</strong> authenticated message post for HOT alerts. Includes the summary, score, and a link to the record.</li>
+    <li><strong>CRM:</strong> authenticated record-create for HOT leads, populated from validated fields.</li>
+    <li><strong>Spreadsheet of record:</strong> authenticated append for WARM leads.</li>
+  </ul>
+  <p>All three sit behind adapters; each failure is retried then dead-lettered (FR-RT-5).</p>
+
+  <h3><span class="sec">5.7</span> State Store (internal)</h3>
+  <p>A relational database providing the dedupe table (atomic insert-if-absent), the canonical lead table, the inference audit table, and the dead-letter table. Availability of this store is a hard dependency (FR-ER-3).</p>
+
+  <!-- ---------- 6 DATA ---------- -->
+  <h2 id="s6"><span class="sec">§6</span> Data Requirements</h2>
+  <ul>
+    <li><strong>Canonical lead record</strong> — one row per lead, full structure in §11.1.</li>
+    <li><strong>Retention</strong> — leads retained for the operating period; the worked examples and any shipped demo use synthetic data only (Document Control).</li>
+    <li><strong>Classification</strong> — submissions contain contact PII (name, email) and are treated as confidential at rest and in transit; never emitted to third-party logs (NFR-SE-2).</li>
+    <li><strong>Provenance</strong> — every enriched field records its origin (form / web / model) and, for model fields, the model id and confidence.</li>
+  </ul>
+
+  <!-- ---------- 7 ACCEPTANCE ---------- -->
+  <h2 id="s7"><span class="sec">§7</span> Acceptance Criteria</h2>
+  <p>The build is accepted when each of the following holds, evidenced by the eval suite (§18) and a live run:</p>
+  <table>
+    <thead><tr><th class="id">AC</th><th>Condition</th><th>Verifies</th></tr></thead>
+    <tbody>
+      <tr><td class="id">AC-1</td><td>A valid submission flows end-to-end to the correct tier and outbound action within the latency budget.</td><td>FR-IN/WR/AI/SC/RT, NFR-PE-1</td></tr>
+      <tr><td class="id">AC-2</td><td>The same submission delivered twice yields one record and one set of outbound actions.</td><td>FR-ID-1..3, NFR-RE-1</td></tr>
+      <tr><td class="id">AC-3</td><td>A deliberately malformed model output is caught by the gate, repaired once or routed MANUAL — never propagated.</td><td>FR-AI-3, FR-AI-4</td></tr>
+      <tr><td class="id">AC-4</td><td>With web search disabled, leads still complete, flagged <code>degraded</code>.</td><td>FR-WR-2, NFR-RE-2</td></tr>
+      <tr><td class="id">AC-5</td><td>A submission whose message attempts prompt injection still produces schema-valid output and does not obey the injected instruction.</td><td>FR-AI-2/3, §15</td></tr>
+      <tr><td class="id">AC-6</td><td>An outbound API failure leaves a persisted record plus a dead-letter entry and an alert.</td><td>FR-RT-5, FR-ER-1</td></tr>
+      <tr><td class="id">AC-7</td><td>Every processed lead has a structured log line and (for the inference) an audit record.</td><td>FR-PS-1/2, NFR-OB-1</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ====================================================================== -->
+  <!-- PART II                                                                 -->
+  <!-- ====================================================================== -->
+  <div class="part" id="part2">
+    <div class="part-num">II</div>
+    <div class="part-title">Technical Design Document</div>
+    <div class="part-meta">How the system is built</div>
+  </div>
+  <div class="part-desc">Architecture, component responsibilities, data contracts, sequencing, failure handling, and the operational concerns — observability, evaluation, deployment — that make this a production system rather than a demo.</div>
+
+  <!-- ---------- 8 ARCHITECTURE ---------- -->
+  <h2 id="s8"><span class="sec">§8</span> Architecture Overview</h2>
+
+  <h3><span class="sec">8.1</span> System Context</h3>
+  <pre><span class="lbl">Figure 1 — System context</span>
+   Prospect            Sales / Ops             Operator
+      |                     ^                      |
+      | submits form        | hot alert + CRM      | metrics, audit,
+      v                     | record               v dead-letter triage
+ +----------------------------------------------------------------+
+ |          INTAKE-TO-OUTBOUND INTELLIGENCE PIPELINE              |
+ |              ( self-hosted orchestration runtime )             |
+ +----------------------------------------------------------------+
+   |              |                |                  |
+   v              v                v                  v
+ Form         Web search       Model API          Chat / CRM /
+ webhook      provider         (small model)      Spreadsheet
+ (inbound)    (outbound)       (outbound)         (outbound)
+                                                       |
+                                                       v
+                                              Relational store
+                                       ( dedupe · leads · audit · DLQ )</pre>
+
+  <h3><span class="sec">8.2</span> Logical Data Flow</h3>
+  <p>The pipeline is a linear flow with one branch (dedupe short-circuit), one gated non-deterministic node (inference), a fan-out at routing, and a single error sink that any stage can divert to.</p>
+  <pre><span class="lbl">Figure 2 — Pipeline data flow</span>
+ [1] WEBHOOK --> [2] VALIDATE --> [3] IDEMPOTENCY --> [4] WEB RESEARCH
+   intake          + normalize       guard (atomic)      parallel, timeout
+                                          |                     |
+                                  duplicate? yes                v
+                                          |            +------------------+
+                                          v            | [5] CONTAINED    |  &lt;== the ONLY
+                                     200 + STOP         |     INFERENCE    |      non-deterministic
+                                                       |  forced JSON,    |      step
+                                                       |  temperature 0   |
+                                                       +--------+---------+
+                                                                v
+                                                       +------------------+
+                                                       | [6] VALIDATION   |  reject extra/!enum
+                                                       |     GATE         |  fields; &lt;= 1 repair;
+                                                       |  JSON Schema     |  else --> MANUAL
+                                                       +--------+---------+
+                                                                v
+                                       [7] DETERMINISTIC SCORING  (pure fn, 0-100)
+                                                                |
+                                                                v
+                                       [8] ROUTER  (score x confidence thresholds)
+                                     +-------------+-------------+--------------+
+                                     v             v             v              v
+                                  HOT (>=70)   WARM (40-69)   COLD (&lt;40)     MANUAL
+                                 chat + CRM     sheet         log only     DLQ + alert
+                                     +-------------+-------------+
+                                                   v
+                                   [9] PERSIST + AUDIT  (every lead, full provenance)
+
+         any failure at stages 4-9  ----------------------------->  DEAD-LETTER + ALERT</pre>
+
+  <h3><span class="sec">8.3</span> Technology Stack</h3>
+  <div class="kv">
+    <dt>Orchestration</dt><dd>Self-hosted workflow runtime (webhook trigger, HTTP nodes, switch/branch, code nodes, dedicated error workflow).</dd>
+    <dt>Inference</dt><dd>Hosted small language model via its structured-output (tool-use) API; pinned model id, <code>temperature 0</code>.</dd>
+    <dt>Research</dt><dd>Web-search API (e.g. a SERP or Brave-style endpoint) behind a swappable adapter.</dd>
+    <dt>State</dt><dd>Relational database (dedupe, leads, inference audit, dead-letter).</dd>
+    <dt>Outbound</dt><dd>Chat channel API, CRM API, spreadsheet API — each behind an adapter.</dd>
+    <dt>Edge</dt><dd>Encrypted tunnel publishing only the webhook path; no open inbound ports (§19).</dd>
+  </div>
+
+  <!-- ---------- 9 CONTAINMENT ---------- -->
+  <h2 id="s9"><span class="sec">§9</span> The Containment Principle</h2>
+  <p class="lead">One non-deterministic step, wrapped in a gate, with a defined fallback for every way the gate can fail. Everything else is ordinary software.</p>
+  <p>The design treats the language model the way a careful engineer treats any untrusted input: it is allowed to <em>propose</em> structure, and deterministic code <em>disposes</em> of the proposal only after validation. Three properties make this real rather than rhetorical:</p>
+  <ul>
+    <li><strong>A single entry point for non-determinism.</strong> There is exactly one model call (§3.4, FR-AI-1). The blast radius of model misbehavior is therefore one node, not the whole pipeline.</li>
+    <li><strong>A hard validation gate.</strong> Output must satisfy a strict JSON Schema with enumerated values and <code>additionalProperties:false</code> (§11.2). A hallucinated field, an out-of-range value, or broken JSON is rejected at the boundary — it cannot reach scoring.</li>
+    <li><strong>A defined fallback for every failure.</strong> Schema failure → one repair → MANUAL. Low confidence → routing capped at WARM. Timeout → bounded backoff → MANUAL. Search failure → degrade and continue. None of these is an unhandled exception; each is a branch in the design (§14).</li>
+  </ul>
+  <p>Crucially, the <em>decisions</em> — the 0–100 score and the tier — are pure functions of validated data (§3.5), so they are reproducible, explainable, and testable without invoking the model at all. That is what lets the system carry a real eval suite (§18): the deterministic half can be unit-tested, and the contained half can be probed against fixtures including adversarial inputs.</p>
+
+  <!-- ---------- 10 COMPONENTS ---------- -->
+  <h2 id="s10"><span class="sec">§10</span> Component Design</h2>
+  <p class="muted">Each component lists its responsibility, inputs, outputs, and failure behavior.</p>
+
+  <h3><span class="sec">10.1</span> Webhook Receiver</h3>
+  <p><strong>Responsibility:</strong> terminate the inbound request, authenticate it, return promptly. <strong>In:</strong> HTTPS POST. <strong>Out:</strong> raw payload + HTTP status. <strong>Fails:</strong> 401 unauthenticated, 400 malformed, 503 if state store down.</p>
+
+  <h3><span class="sec">10.2</span> Validator &amp; Normalizer</h3>
+  <p><strong>Responsibility:</strong> confirm required fields; trim/lower-case; derive the email domain; produce the canonical normalized object. <strong>Fails:</strong> 400 with reason logged.</p>
+
+  <h3><span class="sec">10.3</span> Idempotency Guard</h3>
+  <p><strong>Responsibility:</strong> derive the key (§11.3) and perform an atomic insert-if-absent against the dedupe table. <strong>Out:</strong> proceed, or short-circuit 200 on a known key. <strong>Fails:</strong> store unavailable → 503 (fail closed, FR-ER-3).</p>
+
+  <h3><span class="sec">10.4</span> Web Research Collector</h3>
+  <p><strong>Responsibility:</strong> issue bounded search queries for the company/domain; attach results with provenance. <strong>Fails:</strong> timeout/error → mark <code>degraded</code>, continue with partial/empty context.</p>
+
+  <h3><span class="sec">10.5</span> Contained Inference Unit</h3>
+  <p><strong>Responsibility:</strong> the single model call. Assemble the prompt from normalized fields + research; force a structured tool call; capture output, token counts, latency. <strong>Fails:</strong> timeout → bounded backoff; typed API errors handled per §14.</p>
+
+  <h3><span class="sec">10.6</span> Validation Gate</h3>
+  <p><strong>Responsibility:</strong> validate output against the schema; on failure, perform one corrective re-call (passing the validation error + prior output); on second failure, set status <code>inference_failed</code> and route MANUAL. <strong>Out:</strong> a trusted enrichment object, or a MANUAL diversion.</p>
+
+  <h3><span class="sec">10.7</span> Deterministic Scoring Engine</h3>
+  <p><strong>Responsibility:</strong> map validated signals to component sub-scores via versioned config; sum to a 0–100 composite; persist the breakdown. <strong>No external calls.</strong> Pure and unit-testable.</p>
+
+  <h3><span class="sec">10.8</span> Router</h3>
+  <p><strong>Responsibility:</strong> apply tier thresholds with the confidence guard (FR-RT-4) and select exactly one tier. <strong>Out:</strong> tier + the action set to perform.</p>
+
+  <h3><span class="sec">10.9</span> Outbound Adapters</h3>
+  <p><strong>Responsibility:</strong> chat post, CRM create, sheet append — each idempotent where the API allows, each with try/retry. <strong>Fails:</strong> on exhaustion → dead-letter the action, mark <code>delivery_failed</code>, alert; the lead record still persists.</p>
+
+  <h3><span class="sec">10.10</span> Persistence &amp; Audit Writer</h3>
+  <p><strong>Responsibility:</strong> write the canonical lead record and the inference audit record. Always runs, even on MANUAL/failed paths, so nothing is lost.</p>
+
+  <h3><span class="sec">10.11</span> Error Workflow / Dead-Letter Handler</h3>
+  <p><strong>Responsibility:</strong> a single global handler that catches any unhandled stage failure, writes {lead snapshot, stage, error, timestamp} to the dead-letter table, and raises an operator alert. The one place errors converge.</p>
+
+  <!-- ---------- 11 DATA MODEL ---------- -->
+  <h2 id="s11"><span class="sec">§11</span> Data Model &amp; Schemas</h2>
+
+  <h3><span class="sec">11.1</span> Canonical Lead Record</h3>
+  <pre class="code"><span class="lbl">Canonical lead record (illustrative)</span>{
+  "lead_id":         "uuid",
+  "idempotency_key": "string",
+  "received_at":     "ISO-8601",
+  "status":          "received | enriched | scored | routed |
+                      inference_failed | delivery_failed",
+  "source":          { "form_id": "string", "form_name": "string" },
+
+  "raw_submission":  { <span class="cm">/* verbatim provider payload */</span> },
+  "normalized":      {
+    "name": "string", "email": "string", "domain": "string",
+    "company": "string|null", "message": "string"
+  },
+
+  "web_research":    {
+    "status": "ok | degraded",
+    "fetched_at": "ISO-8601",
+    "results": [ { "title": "...", "snippet": "...", "url": "..." } ]
+  },
+
+  "enrichment":      {
+    "company_size": "mid",
+    "industry": "healthcare",
+    "fit_signals": { "budget_indicated": true, "timeline_urgency": "high",
+                     "decision_maker": true, "use_case_clarity": "high" },
+    "summary": "string (&lt;= 280 chars)",
+    "confidence": 0.86,
+    "model": "claude-haiku-4-5", "schema_version": "1.0",
+    "repair_used": false, "extracted_at": "ISO-8601"
+  },
+
+  "score":           {
+    "composite": 96,
+    "components": { "size": 16, "industry": 15, "budget": 20,
+                    "urgency": 15, "decision_maker": 15, "clarity": 15 },
+    "weights_version": "1.0", "scored_at": "ISO-8601"
+  },
+
+  "routing":         { "tier": "HOT", "actions": ["chat","crm"],
+                       "routed_at": "ISO-8601" },
+  "errors":          [ ]
+}</pre>
+
+  <h3><span class="sec">11.2</span> The Inference Output Contract (strict)</h3>
+  <p>This schema is the validation gate. Enumerations bound every categorical field; <code>additionalProperties:false</code> rejects any field the model was not asked for; <code>confidence</code> is range-checked. The model is bound to this schema via a forced tool call (§15), so it is also the tool's <code>input_schema</code>.</p>
+  <pre class="code"><span class="lbl">JSON Schema — draft 2020-12</span>{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "LeadEnrichment",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["company_size","industry","fit_signals","summary","confidence"],
+  "properties": {
+    "company_size": { "type": "string",
+      "enum": ["solo","small","mid","enterprise","unknown"] },
+    "industry": { "type": "string", "maxLength": 60 },
+    "fit_signals": {
+      "type": "object", "additionalProperties": false,
+      "required": ["budget_indicated","timeline_urgency",
+                   "decision_maker","use_case_clarity"],
+      "properties": {
+        "budget_indicated": { "type": ["boolean","null"] },
+        "timeline_urgency": { "type": "string",
+          "enum": ["low","medium","high","unknown"] },
+        "decision_maker":   { "type": ["boolean","null"] },
+        "use_case_clarity": { "type": "string",
+          "enum": ["low","medium","high"] }
+      }
+    },
+    "summary":    { "type": "string", "maxLength": 280 },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+  }
+}</pre>
+
+  <h3><span class="sec">11.3</span> Idempotency Key Derivation</h3>
+  <p>The correct key comes from a source-stable identifier, not from anything the pipeline invents. Primary: the provider's submission id. Fallback (if the provider omits one): a hash binding the identity of the submission.</p>
+  <pre class="code"><span class="lbl">Key derivation</span><span class="cm"># preferred — provider's stable id</span>
+key = "sub:" + provider_submission_id
+
+<span class="cm"># fallback — derived, stable across retries because all inputs are stable</span>
+key = "drv:" + sha256( lower(email) + "|" + form_id + "|" + submitted_at )</pre>
+
+  <h3><span class="sec">11.4</span> Scoring Configuration (versioned)</h3>
+  <p>Weights sum to 100; each categorical value maps to a 0.0–1.0 factor. Held as external config (NFR-MA-1), versioned on the record (<code>weights_version</code>).</p>
+  <pre class="code"><span class="lbl">Scoring config v1.0</span>weights = { size:20, industry:15, budget:20, urgency:15,
+            decision_maker:15, clarity:15 }   <span class="cm"># sum = 100</span>
+
+factors:
+  company_size      enterprise 1.0 | mid 0.8 | small 0.5 | solo 0.3 | unknown 0.2
+  industry          target 1.0 | adjacent 0.6 | off 0.2 | unknown 0.3
+  budget_indicated  true 1.0 | false 0.2 | null 0.4
+  timeline_urgency  high 1.0 | medium 0.6 | low 0.3 | unknown 0.4
+  decision_maker    true 1.0 | false 0.3 | null 0.4
+  use_case_clarity  high 1.0 | medium 0.6 | low 0.2
+
+composite = round( sum( weight_i * factor_i ) )     <span class="cm"># 0..100</span></pre>
+
+  <h3><span class="sec">11.5</span> Routing Thresholds</h3>
+  <pre class="code"><span class="lbl">Routing decision (deterministic, confidence-aware)</span>if   composite &gt;= 70 and confidence &gt;= 0.6 : tier = HOT    <span class="cm"># chat + CRM</span>
+elif composite &gt;= 40                       : tier = WARM   <span class="cm"># sheet append</span>
+                                             <span class="cm"># also: composite&gt;=70 but confidence&lt;0.6 lands here</span>
+else                                       : tier = COLD   <span class="cm"># log only</span>
+
+<span class="cm"># inference_failed (schema gate exhausted) overrides --&gt; MANUAL (DLQ + alert)</span></pre>
+
+  <!-- ---------- 12 SEQUENCE ---------- -->
+  <h2 id="s12"><span class="sec">§12</span> Processing Sequence</h2>
+  <ol>
+    <li><strong>Receive &amp; authenticate</strong> (≤0.5&nbsp;s). Reject bad/unauthenticated requests early.</li>
+    <li><strong>Validate &amp; normalize</strong>. Build the canonical normalized object; derive domain.</li>
+    <li><strong>Idempotency guard</strong>. Atomic insert-if-absent; on a known key, return 200 and stop.</li>
+    <li><strong>Web research</strong> (≤8&nbsp;s, timed out, one retry). Attach results + provenance; mark <code>degraded</code> on failure.</li>
+    <li><strong>Contained inference</strong> (≤15&nbsp;s timeout, typical ~3–6&nbsp;s). One forced-tool call; capture output + tokens + latency.</li>
+    <li><strong>Validation gate</strong>. Schema-check; one repair on failure; else status <code>inference_failed</code> → MANUAL.</li>
+    <li><strong>Scoring</strong> (&lt;100&nbsp;ms). Deterministic composite + component breakdown.</li>
+    <li><strong>Routing</strong> (&lt;10&nbsp;ms). Apply thresholds + confidence guard → one tier.</li>
+    <li><strong>Outbound</strong> (≤5&nbsp;s). Perform the tier's actions; retry then dead-letter on failure.</li>
+    <li><strong>Persist &amp; audit</strong>. Write the lead record and the inference audit record. Done.</li>
+  </ol>
+  <p class="muted">Latency budget targets NFR-PE-1: the research and inference calls (steps 4–5) dominate; everything else is sub-second.</p>
+
+  <!-- ---------- 13 IDEMPOTENCY ---------- -->
+  <h2 id="s13"><span class="sec">§13</span> Idempotency &amp; Exactly-Once Outcomes</h2>
+  <p>Webhooks are an at-least-once channel: providers retry on any non-2xx, and networks duplicate. The system therefore aims not for exactly-once <em>delivery</em> (impossible) but exactly-once <em>outcomes</em>. The mechanism is the atomic dedupe insert at step 3 (§10.3): the first delivery of a key wins the insert and proceeds; any later delivery of the same key finds the row present and short-circuits to 200 with no enrichment and no outbound action. Because the key is derived from a source-stable identifier (§11.3), it is identical across all retries of the same submission, and because the insert is atomic, two simultaneous deliveries cannot both win. This is also why the store is a hard dependency (FR-ER-3): without it, the only safe action is to fail closed and let the provider retry.</p>
+
+  <!-- ---------- 14 FAILURE ---------- -->
+  <h2 id="s14"><span class="sec">§14</span> Failure Modes &amp; Error Handling</h2>
+  <p>Every external interaction and the one non-deterministic step has a defined behavior. The principle throughout: <strong>transient → retry with bound; terminal → escalate; never silently drop.</strong></p>
+  <table>
+    <caption>Failure matrix</caption>
+    <thead><tr><th>Condition</th><th>Detection</th><th>Handling</th><th>Lead outcome</th><th>Alert</th></tr></thead>
+    <tbody>
+      <tr><td>Malformed / missing-field payload</td><td>Validator</td><td>Reject 400; log</td><td>Not created</td><td>No</td></tr>
+      <tr><td>Unauthenticated webhook</td><td>Receiver</td><td>Reject 401</td><td>Not created</td><td>No</td></tr>
+      <tr><td>Duplicate submission</td><td>Dedupe insert conflict</td><td>200; short-circuit</td><td>Existing record untouched</td><td>No</td></tr>
+      <tr><td>State store unavailable</td><td>Connection check</td><td>Fail closed → 503 (provider retries)</td><td>Not processed yet</td><td>Yes — critical</td></tr>
+      <tr><td>Web search timeout / 5xx</td><td>Timeout, 1 retry</td><td>Proceed with partial/empty context; mark <code>degraded</code></td><td>Enriched (less context)</td><td>No (info)</td></tr>
+      <tr><td>Inference timeout</td><td>15&nbsp;s timeout</td><td>Backoff, ≤2 retries; else MANUAL</td><td>Persisted, <code>inference_failed</code></td><td>Yes</td></tr>
+      <tr><td>Inference malformed / schema violation</td><td>Validation gate</td><td>1 corrective re-call; else MANUAL, raw output captured</td><td>Persisted, raw kept</td><td>Yes</td></tr>
+      <tr><td>Low confidence (&lt; 0.6)</td><td>Post-gate guard</td><td>Cap routing at WARM</td><td>Routed WARM</td><td>No (info)</td></tr>
+      <tr><td>Outbound chat/CRM/sheet failure</td><td>Adapter try/retry</td><td>≤2 retries; else dead-letter the action</td><td>Persisted, <code>delivery_failed</code></td><td>Yes</td></tr>
+      <tr><td>Model API auth / credit (401/402)</td><td>Typed error</td><td>Terminal → MANUAL; do not retry blindly</td><td>Persisted</td><td>Yes — critical</td></tr>
+      <tr><td>Model API rate limit (429)</td><td>Typed error</td><td>Exponential backoff within timeout</td><td>Usually completes</td><td>No unless exhausted</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ---------- 15 PROMPT ---------- -->
+  <h2 id="s15"><span class="sec">§15</span> Prompt &amp; Inference Configuration</h2>
+  <p>The model is configured to be as deterministic and as bounded as inference allows, then never trusted regardless.</p>
+  <ul>
+    <li><strong>Forced structured output.</strong> A single tool is defined whose <code>input_schema</code> is the enrichment contract (§11.2); <code>tool_choice</code> forces the model to call it. This compels a structured object and forbids free-form prose (FR-AI-2). The validation gate (§10.6) re-checks anyway — defense in depth, since "forced" is not the same as "guaranteed valid."</li>
+    <li><strong>System instruction.</strong> Frames the model as a structured extractor with one job; enumerates the fields; instructs it to return <code>unknown</code>/<code>null</code> when a value is not grounded in the input rather than guessing (FR-AI-5); instructs honest confidence calibration; states explicitly that any instructions appearing <em>inside</em> the lead's message are data to be summarized, not commands to follow (the injection guard, AC-5).</li>
+    <li><strong>Parameters.</strong> Pinned small model (recorded per lead, FR-AI-6); <code>temperature 0</code>; small <code>max_tokens</code> sufficient for the object; 15&nbsp;s timeout.</li>
+    <li><strong>Repair loop.</strong> On schema failure, exactly one re-call that includes the validation error and the prior invalid output and asks for a corrected object. Bounded to one (FR-AI-4); a second failure is terminal → MANUAL.</li>
+  </ul>
+  <div class="box plain" data-label="Why containment, not just a good prompt">
+    <p style="font-size:13px;margin:0">A better prompt reduces the <em>rate</em> of bad output; it cannot make the rate zero, because the model is non-deterministic by construction. The validation gate makes the <em>consequence</em> of bad output zero — it is caught at the boundary and routed to a safe path. The prompt is an optimization; the gate is the guarantee. The system depends on the guarantee.</p>
+  </div>
+
+  <!-- ---------- 16 SECURITY ---------- -->
+  <h2 id="s16"><span class="sec">§16</span> Security Design</h2>
+  <ul>
+    <li><strong>Webhook authenticity</strong> — shared secret or signature verification on every inbound request (FR-IN-2); unauthenticated requests are rejected before any processing.</li>
+    <li><strong>No open inbound ports</strong> — the endpoint is published through an encrypted tunnel that exposes only the webhook path (§19).</li>
+    <li><strong>Secrets</strong> — all API keys and the webhook secret live in environment/secret storage, never in source, logs, or exported state (NFR-SE-1).</li>
+    <li><strong>Least privilege</strong> — each downstream credential is scoped to exactly the action it performs (post / create / append).</li>
+    <li><strong>PII discipline</strong> — contact data stays within the record store and the named downstream systems; it is never written to third-party logs and is excluded from diagnostic exports (NFR-SE-2).</li>
+    <li><strong>Injection containment</strong> — because the model's output is schema-bounded and acted on only after validation, a prompt-injection attempt in the message field cannot escalate into an action; worst case it produces a low-quality-but-valid extraction caught by the confidence guard.</li>
+  </ul>
+
+  <!-- ---------- 17 OBSERVABILITY ---------- -->
+  <h2 id="s17"><span class="sec">§17</span> Observability &amp; Cost</h2>
+
+  <h3><span class="sec">17.1</span> Structured Logging</h3>
+  <p>Each execution emits one structured log line keyed by a traceable execution id, carrying the lead id, idempotency key, per-stage timings, model id, token counts, composite score, tier, and final status (NFR-OB-1). A reviewer can reconstruct any lead's journey from a single line.</p>
+
+  <h3><span class="sec">17.2</span> Inference Audit Record</h3>
+  <p>Beyond the lead record, each model call writes an audit row: model id, parameters, prompt hash, raw output, validation result, <code>repair_used</code>, latency, token counts. This is what makes model behavior <em>inspectable</em> after the fact and is the difference between "we call an LLM" and "we operate an LLM."</p>
+
+  <h3><span class="sec">17.3</span> Metrics &amp; Alerts</h3>
+  <table>
+    <thead><tr><th>Metric</th><th>Why it matters</th><th>Alert threshold</th></tr></thead>
+    <tbody>
+      <tr><td>Inference success rate</td><td>Health of the one risky step</td><td>&lt; 95% over 1h → warn</td></tr>
+      <tr><td>Schema-violation rate</td><td>Early signal of prompt/model drift</td><td>&gt; 5% over 1h → warn</td></tr>
+      <tr><td>Repair-used rate</td><td>How often output needs a second try</td><td>Trend watch</td></tr>
+      <tr><td>p50 / p95 latency</td><td>Budget adherence (NFR-PE-1)</td><td>p95 &gt; 30s → warn</td></tr>
+      <tr><td>Route distribution</td><td>Sanity of scoring over time</td><td>Sudden shift → review</td></tr>
+      <tr><td>Dead-letter count</td><td>Unresolved failures</td><td>&gt; 0 unresolved → warn</td></tr>
+      <tr><td>Daily cost</td><td>Budget control (NFR-CO-1)</td><td>Above ceiling → warn</td></tr>
+    </tbody>
+  </table>
+
+  <h3><span class="sec">17.4</span> Cost Model</h3>
+  <p>Per-lead cost is deliberately bounded and parametric, not hardcoded:</p>
+  <pre class="code"><span class="lbl">Per-lead cost</span>cost_per_lead = model_input_tokens  * rate_in
+              + model_output_tokens * rate_out
+              + search_queries      * rate_query
+
+<span class="cm"># typical envelope: ~1-2k input tokens, ~200-400 output tokens (one small-model</span>
+<span class="cm"># call), plus a small fixed number of search queries. At small-model rates the</span>
+<span class="cm"># inference cost is a fraction of a cent per lead; the search quota is the</span>
+<span class="cm"># dominant and most-variable term. Confirm unit rates against current pricing.</span></pre>
+
+  <!-- ---------- 18 EVAL ---------- -->
+  <h2 id="s18"><span class="sec">§18</span> Evaluation &amp; Test Strategy</h2>
+  <p>Because the deterministic half is pure and the contained half is bounded, the whole system is testable. A fixture set of 15–25 hand-labeled synthetic submissions spans the tiers plus deliberate edge and adversarial cases.</p>
+  <table>
+    <thead><tr><th>Test</th><th>What it asserts</th><th>Pass bar</th></tr></thead>
+    <tbody>
+      <tr><td>Schema conformance</td><td>Every fixture yields schema-valid output (after ≤1 repair)</td><td>100%</td></tr>
+      <tr><td>Routing correctness</td><td>Extracted tier matches the labeled tier on clear cases</td><td>Match on all non-borderline fixtures</td></tr>
+      <tr><td>Scoring unit tests</td><td>Known signals → known composite (pure function)</td><td>Exact</td></tr>
+      <tr><td>Idempotency</td><td>Same submission twice → one record, one action set</td><td>Exact</td></tr>
+      <tr><td>Degradation</td><td>Search disabled → completes, flagged <code>degraded</code></td><td>No failed leads</td></tr>
+      <tr><td>Injection resistance</td><td>Malicious message → still schema-valid, instruction not obeyed</td><td>No escalation</td></tr>
+      <tr><td>Empty / gibberish / non-English</td><td>Graceful <code>unknown</code>/low-confidence handling</td><td>No crash, no false HOT</td></tr>
+    </tbody>
+  </table>
+  <p>These run manually at build time. In the capstone they are wired into CI to run on every push — this fixture set is the seed of that gate (Document Control, related work). Carrying real evals, not just "it worked when I tried it," is the MLOps signal this piece is meant to demonstrate.</p>
+
+  <!-- ---------- 19 DEPLOYMENT ---------- -->
+  <h2 id="s19"><span class="sec">§19</span> Deployment Topology</h2>
+  <pre><span class="lbl">Figure 3 — Deployment</span>            Internet
+               |
+               v
+   +-----------------------+        encrypted tunnel publishes ONLY
+   |  Encrypted tunnel     |        the /webhook path; no open ports
+   +-----------+-----------+
+               |
+   +===========v===========================================+
+   |  Single small virtual server (containerized)          |
+   |                                                       |
+   |   +-------------------+      +----------------------+  |
+   |   | Orchestration     |&lt;---->|  Relational store    |  |
+   |   | runtime           |      |  dedupe | leads |    |  |
+   |   | (workflow + error |      |  audit  | DLQ      |  |
+   |   |  workflow)        |      +----------------------+  |
+   |   +---------+---------+                                |
+   +=============|=========================================+
+                 |  outbound HTTPS
+        +--------+--------+--------+---------+
+        v        v        v        v         v
+     Model    Search    Chat     CRM     Spreadsheet
+      API      API      API      API        API</pre>
+  <div class="kv">
+    <dt>Runtime</dt><dd>Orchestration runtime + relational store as containers on one small VPS.</dd>
+    <dt>Ingress</dt><dd>Encrypted tunnel exposing only the webhook path — no inbound firewall holes.</dd>
+    <dt>Config</dt><dd>Scoring weights, routing thresholds, schema version, timeouts — externalized; secrets in env/secret store.</dd>
+    <dt>Egress</dt><dd>Outbound HTTPS only, to the five named APIs.</dd>
+  </div>
+
+  <!-- ---------- 20 EXTENSIBILITY ---------- -->
+  <h2 id="s20"><span class="sec">§20</span> Extensibility &amp; Future Work</h2>
+  <ul>
+    <li><strong>Provider swaps.</strong> Model and search adapters (NFR-MA-2) let either be replaced — or A/B'd — without touching scoring, routing, or storage.</li>
+    <li><strong>More channels / tiers.</strong> Additional outbound adapters or a finer tier scheme are config + adapter changes, not redesigns.</li>
+    <li><strong>Feeds the RAG piece.</strong> This pipeline's validated, provenance-tagged leads are a clean upstream source for Piece II (Document Intelligence / RAG).</li>
+    <li><strong>Graduates into the capstone.</strong> The containment pattern, the eval fixtures, and the failure discipline here are the foundation the capstone's larger multi-agent system reuses and scales.</li>
+  </ul>
+
+  <!-- ====================================================================== -->
+  <!-- APPENDICES                                                              -->
+  <!-- ====================================================================== -->
+  <div class="part" id="appendices">
+    <div class="part-num">A</div>
+    <div class="part-title">Appendices</div>
+    <div class="part-meta">Traceability · worked example · glossary</div>
+  </div>
+
+  <h2 id="sa"><span class="sec">A</span> Requirement Traceability Matrix</h2>
+  <p class="muted">Every requirement maps to the design that satisfies it — the link from "what" to "how."</p>
+  <table>
+    <thead><tr><th class="id">Requirement</th><th>Satisfied by</th></tr></thead>
+    <tbody>
+      <tr><td class="id">FR-IN-1..5</td><td>§10.1 Receiver, §10.2 Validator/Normalizer, §5.1, §12 steps 1–2</td></tr>
+      <tr><td class="id">FR-ID-1..3</td><td>§10.3 Idempotency guard, §11.3 key derivation, §13</td></tr>
+      <tr><td class="id">FR-WR-1..3</td><td>§10.4 Research collector, §5.3, §14 (degraded path)</td></tr>
+      <tr><td class="id">FR-AI-1..6</td><td>§9 containment, §10.5 Inference unit, §10.6 Gate, §11.2 schema, §15</td></tr>
+      <tr><td class="id">FR-SC-1..3</td><td>§10.7 Scoring engine, §11.4 config</td></tr>
+      <tr><td class="id">FR-RT-1..5</td><td>§10.8 Router, §10.9 Adapters, §11.5 thresholds</td></tr>
+      <tr><td class="id">FR-PS-1..2</td><td>§10.10 Persistence/Audit writer, §11.1, §17.2</td></tr>
+      <tr><td class="id">FR-ER-1..3</td><td>§10.11 Error workflow, §13, §14</td></tr>
+      <tr><td class="id">NFR-PE-1</td><td>§12 latency budget</td></tr>
+      <tr><td class="id">NFR-RE-1..2</td><td>§13, §14 (degradation, dead-letter)</td></tr>
+      <tr><td class="id">NFR-SE-1..2</td><td>§16</td></tr>
+      <tr><td class="id">NFR-OB-1..2</td><td>§17.1–17.3</td></tr>
+      <tr><td class="id">NFR-CO-1</td><td>§17.4 cost model</td></tr>
+      <tr><td class="id">NFR-MA-1..2</td><td>§11.4 config, §8.3 adapters, §20</td></tr>
+    </tbody>
+  </table>
+
+  <h2 id="sb"><span class="sec">B</span> Worked Example — End to End</h2>
+  <p>A single synthetic lead carried through every stage, with real arithmetic. (Synthetic data; any resemblance to a real organization is coincidental.)</p>
+
+  <h4>B.1 — Normalized submission</h4>
+  <pre class="code">{ "name": "Dana Reyes", "email": "dreyes@northgate-medical.example",
+  "domain": "northgate-medical.example", "company": "Northgate Medical Group",
+  "message": "Opening an 18,000 sq ft outpatient clinic in Q3. Need Cat6A
+              throughout plus a small server room. Quote needed by end of
+              month — budget is approved." }</pre>
+
+  <h4>B.2 — Web research (provenance: web)</h4>
+  <pre class="code">status: ok
+results: multi-site healthcare provider, ~400 employees, "medical group",
+         several clinic locations in-region.</pre>
+
+  <h4>B.3 — Contained inference output (validated against §11.2)</h4>
+  <pre class="code">{ "company_size": "mid", "industry": "healthcare",
+  "fit_signals": { "budget_indicated": true, "timeline_urgency": "high",
+                   "decision_maker": true, "use_case_clarity": "high" },
+  "summary": "Mid-size healthcare provider opening an 18k sqft clinic in Q3;
+              needs Cat6A + server room; budget approved; quote within a month.",
+  "confidence": 0.86 }</pre>
+  <p class="muted">Gate: schema-valid, no extra fields, confidence in range → accepted, <code>repair_used:false</code>.</p>
+
+  <h4>B.4 — Deterministic scoring</h4>
+  <table>
+    <thead><tr><th>Component</th><th>Value → factor</th><th>Weight</th><th class="id">Contribution</th></tr></thead>
+    <tbody>
+      <tr><td>Company size</td><td>mid → 0.8</td><td>20</td><td class="id">16.0</td></tr>
+      <tr><td>Industry</td><td>target → 1.0</td><td>15</td><td class="id">15.0</td></tr>
+      <tr><td>Budget</td><td>true → 1.0</td><td>20</td><td class="id">20.0</td></tr>
+      <tr><td>Urgency</td><td>high → 1.0</td><td>15</td><td class="id">15.0</td></tr>
+      <tr><td>Decision-maker</td><td>true → 1.0</td><td>15</td><td class="id">15.0</td></tr>
+      <tr><td>Use-case clarity</td><td>high → 1.0</td><td>15</td><td class="id">15.0</td></tr>
+      <tr><td colspan="3"><strong>Composite</strong></td><td class="id"><strong>96</strong></td></tr>
+    </tbody>
+  </table>
+
+  <h4>B.5 — Routing &amp; outcome</h4>
+  <p>Composite 96 ≥ 70 and confidence 0.86 ≥ 0.6 → <span class="tier">HOT</span>. Actions: chat-channel alert (summary + score + record link) and CRM record creation. The full lead record (§11.1) is persisted with status <code>routed</code>, and the inference audit row is written. Total external latency: one search round + one ~4&nbsp;s inference call — within the 30&nbsp;s p95 budget.</p>
+
+  <h2 id="sc"><span class="sec">C</span> Glossary</h2>
+  <div class="kv">
+    <dt>Containment</dt><dd>Confining all non-determinism to a single model call whose output is validated before use, so its failure modes have a bounded blast radius.</dd>
+    <dt>Validation gate</dt><dd>The strict JSON-Schema check (§11.2) that model output must pass before it can influence scoring, routing, or any action.</dd>
+    <dt>Idempotency key</dt><dd>A source-stable token (§11.3) that makes reprocessing the same submission a no-op, yielding exactly-once outcomes.</dd>
+    <dt>Provenance</dt><dd>The per-field record of where a value came from — form, web, or model — and, for model fields, the model id and confidence.</dd>
+    <dt>Dead-letter (DLQ)</dt><dd>The store where a failing lead and its error are captured for operator triage, so nothing is silently lost.</dd>
+    <dt>Tier</dt><dd>The routing outcome: HOT (chat + CRM), WARM (sheet), COLD (log only), or MANUAL (DLQ + alert).</dd>
+    <dt>Degraded</dt><dd>A lead enriched without full web research because the search dependency failed — quality reduced, availability preserved.</dd>
+    <dt>Repair loop</dt><dd>The single bounded re-call made when model output fails schema validation, after which a second failure is terminal.</dd>
+  </div>
+
+  <!-- ============================= FOOTER ============================= -->
+  <div class="footer">
+    Intake-to-Outbound Intelligence Pipeline · MICT-PIPE-001 · v1.0 · jakemorganlabs
+    <em>"The model proposes structure; deterministic code disposes."</em>
+  </div>
+
+</div>
+</body>
+</html>

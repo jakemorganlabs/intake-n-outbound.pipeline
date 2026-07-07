@@ -10,9 +10,12 @@ import { Client } from 'pg';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/intake_pipeline';
-const WEBHOOK_URL = process.env.EVAL_WEBHOOK_URL || 'http://localhost:3001/intake-webhook';
+const IS_PROD_EVAL = process.env.EVAL_ENV === 'prod';
+const WEBHOOK_URL = IS_PROD_EVAL
+  ? process.env.EVAL_WEBHOOK_URL || 'https://intake.jakemorganlabs.dev/webhook'
+  : process.env.EVAL_WEBHOOK_URL || 'http://localhost:3001/intake-webhook';
 const FIXTURES_DIR = resolve(__dirname, 'fixtures');
-const REPORT_PATH = resolve(__dirname, 'report.md');
+const REPORT_PATH = resolve(__dirname, IS_PROD_EVAL ? 'report_prod.md' : 'report.md');
 
 interface Label {
   expected_status: 'routed' | 'inference_failed';
@@ -73,9 +76,10 @@ function nowISO(): string {
 
 function deriveIdempotencyKey(payload: Record<string, unknown>): string {
   const sid = (payload.submission_id as string) || null;
-  if (sid) return `sub:${sid}`;
+  const prefix = IS_PROD_EVAL ? 'eval_' : '';
+  if (sid) return `${prefix}sub:${sid}`;
   // Fallback for fixtures that omit submission_id (none in current eval set)
-  return `drv:unknown`;
+  return `${prefix}drv:unknown`;
 }
 
 async function resetTables(client: Client): Promise<void> {
