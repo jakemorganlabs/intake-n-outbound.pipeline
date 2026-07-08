@@ -31,7 +31,6 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run validate:schemas
-      - run: npm test
       - name: Apply DB migrations
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/intake_pipeline
@@ -40,3 +39,4 @@ jobs:
             echo "Applying $f"
             psql "$DATABASE_URL" -f "$f"
           done
+      - run: npm test
