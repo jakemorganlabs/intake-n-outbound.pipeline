@@ -76,7 +76,7 @@ Reports: [eval_report_local.md](docs/evidence/eval_report_local.md) | [eval_repo
 
 ```bash
 cp .env.example .env
-# edit .env with DATABASE_URL, INFERENCE_API_KEY, SEARCH_API_KEY, WEBHOOK_SECRET
+# edit .env with DATABASE_URL, MODEL_API_KEY, SEARCH_API_KEY, WEBHOOK_SECRET
 
 npm install
 npm run migrate                # Postgres migrations
