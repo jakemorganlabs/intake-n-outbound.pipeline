@@ -1,8 +1,7 @@
 /**
- * Deterministic composite scoring (0-100).
- * Invariant: Given the same validated signals, this function returns the exact same composite score.
- * All weights and factors are loaded from an external, versioned config file.
- * This module deliberately does NOT call the model; scoring is pure function + config.
+ * Deterministic composite scoring (0-100). Same validated inputs always
+ * produce the same composite. Weights and factor tables live in an
+ * external, versioned config; this function never calls the model.
  */
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
@@ -39,6 +38,8 @@ function loadConfig() {
   return cachedConfig!;
 }
 
+// note: composite is computed from already-validated signals; any unrecognised
+// categorical value falls back to a 0 factor rather than throwing.
 export function scoring(
   signals: ValidatedSignals,
   configOverride?: typeof cachedConfig

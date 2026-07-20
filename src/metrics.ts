@@ -1,5 +1,4 @@
-// Metrics counter inserts for the pipeline.
-// Traces to: §17.2, §17.3, NFR-OB-2
+// Lightweight metrics counters. Writes one row to metrics_events per call.
 
 import { Client } from 'pg';
 

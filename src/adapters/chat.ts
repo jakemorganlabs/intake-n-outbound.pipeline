@@ -1,5 +1,4 @@
-// Chat adapter (Slack incoming webhook)
-// Traces to: §10.9 Outbound Adapters, FR-RT-2, FR-RT-5
+// Slack incoming-webhook adapter. Used for HOT tier alerts and MANUAL / dispatch-failure alerts.
 
 import 'dotenv/config';
 import { withRetry, isRetryableHttp } from './retry.js';

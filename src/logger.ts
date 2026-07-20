@@ -1,6 +1,4 @@
-// Structured logger for the pipeline.
-// Emits one JSON line per execution with per-stage timings.
-// Traces to: §17.1 NFR-OB-1
+// Structured logger. One JSON line per pipeline execution with per-stage timings.
 
 export interface StageTiming {
   name: string;
@@ -23,9 +21,7 @@ export interface ExecutionLog {
 }
 
 export function logExecution(log: ExecutionLog): void {
-  // Use process.stdout so nothing else interferes
-  const line = JSON.stringify(log);
-  process.stdout.write(line + '\n');
+  process.stdout.write(JSON.stringify(log) + '\n');
 }
 
 export function generateExecutionId(): string {

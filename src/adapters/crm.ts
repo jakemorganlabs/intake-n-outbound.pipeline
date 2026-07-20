@@ -1,5 +1,4 @@
-// CRM adapter (HubSpot contact create with dedupe key as external id)
-// Traces to: §10.9 Outbound Adapters, FR-RT-2, FR-RT-5
+// HubSpot CRM adapter. HOT tier creates a contact keyed by the pipeline's idempotency key (hs_external_id).
 
 import 'dotenv/config';
 import { withRetry, isRetryableHttp } from './retry.js';
@@ -58,7 +57,6 @@ export async function dispatchCRM(input: CRMDispatchInput): Promise<AdapterResul
       if (res.ok || res.status === 200 || res.status === 201) {
         return { ok: true, latencyMs, statusCode: res.status };
       }
-      // HubSpot returns 409 for duplicate external id on some endpoints; here we use upsert-friendly create
       const bodyText = await res.text().catch(() => '');
       return { ok: false, latencyMs, statusCode: res.status, error: `HubSpot ${res.status}: ${bodyText.slice(0, 200)}` };
     } catch (e) {

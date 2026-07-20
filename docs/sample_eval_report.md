@@ -1,4 +1,4 @@
-# Eval Report — MICT-PIPE-001
+# Eval Report
 
 Generated: 2026-06-11T21:13:00.000Z
 Total fixtures: 33
@@ -18,7 +18,7 @@ Total fixtures: 33
 
 ## Failures
 
-No failures. All fixtures pass.
+None. All fixtures pass.
 
 ## Passed Fixtures
 
@@ -69,5 +69,4 @@ No failures. All fixtures pass.
 - 04_minimal_required: PASS (2012ms)
 - 05_repair_expected: PASS (2234ms)
 
----
 *End of report*

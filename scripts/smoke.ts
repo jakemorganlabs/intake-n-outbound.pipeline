@@ -1,6 +1,7 @@
 /**
- * Smoke Test -- Session S03 Adapters & Error Workflow
- * Covers all four tiers plus forced adapter failure.
+ * Smoke test. Walks the four tiers plus a forced adapter failure, end to
+ * end, with mocked inference. Asserts the routed tier and the persisted
+ * row count.
  *
  * Usage: npx tsx scripts/smoke.ts
  */
@@ -31,14 +32,6 @@ async function count(table: string): Promise<number> {
   const result = await client.query(`SELECT COUNT(*) FROM ${table}`);
   await client.end();
   return parseInt(result.rows[0].count, 10);
-}
-
-async function queryFirst(table: string, column: string, value: string): Promise<Record<string, unknown> | null> {
-  const client = new Client({ connectionString: DATABASE_URL });
-  await client.connect();
-  const result = await client.query(`SELECT * FROM ${table} WHERE ${column} = $1`, [value]);
-  await client.end();
-  return result.rows[0] as Record<string, unknown> | null;
 }
 
 function timestamp() {
@@ -99,7 +92,7 @@ const mockInferenceCold = async (_n: NormalizedLead, _r: WebResearch): Promise<{
   },
 });
 
-// Mock inference: schema-invalid (routed to MANUAL)
+// Mock inference: schema-invalid, routes to MANUAL
 const mockInferenceManual = async (_n: NormalizedLead, _r: WebResearch): Promise<{ result: InferenceResult; error?: string }> => ({
   result: {
     model: 'google/gemma-4-26B-A4B-it',
@@ -139,11 +132,10 @@ function fail(msg: string) {
 }
 
 async function main() {
-  console.log('=== S03 Smoke Test ===');
+  console.log('=== Smoke Test ===');
   console.log(`DB: ${DATABASE_URL.replace(/\/\/.+@/, '//***@')}`);
   console.log('');
 
-  // -- HOT --
   console.log('[TIER HOT] Worked Example B end-to-end...');
   await resetDb();
   const hotPayload = makePayload('hot');
@@ -156,7 +148,6 @@ async function main() {
   if (hotScore?.composite !== 96) fail(`Expected composite 96, got ${hotScore?.composite}`);
   if (exitCode === 0) console.log('PASS');
 
-  // -- WARM --
   console.log('[TIER WARM] Standard warm lead...');
   const warmPayload = makePayload('warm');
   const warmResult = await runPipeline(warmPayload, { inference: mockInferenceWarm });
@@ -166,7 +157,6 @@ async function main() {
   if (warmRouting?.tier !== 'WARM') fail(`Expected WARM, got ${warmRouting?.tier}`);
   if (exitCode === 0) console.log('PASS');
 
-  // -- COLD --
   console.log('[TIER COLD] Low-score lead...');
   const coldPayload = makePayload('cold');
   const coldResult = await runPipeline(coldPayload, { inference: mockInferenceCold });
@@ -176,8 +166,7 @@ async function main() {
   if (coldRouting?.tier !== 'COLD') fail(`Expected COLD, got ${coldRouting?.tier}`);
   if (exitCode === 0) console.log('PASS');
 
-  // -- MANUAL --
-  console.log('[TIER MANUAL] Double-invalid model...');
+  console.log('[TIER MANUAL] Double-invalid model output...');
   const manualPayload = makePayload('manual');
   const manualResult = await runPipeline(manualPayload, { inference: mockInferenceManual });
 
@@ -186,19 +175,16 @@ async function main() {
   if (manualRouting?.tier !== 'MANUAL') fail(`Expected MANUAL, got ${manualRouting?.tier}`);
   if (exitCode === 0) console.log('PASS');
 
-  // -- Adapter failure: DLQ row + alert + lead still present --
-  console.log('[ADAPTER FAILURE] Forced failure via missing env...');
-  // This test verifies that when adapters are not configured, the pipeline still
-  // persists the lead and writes a DLQ entry rather than dropping the lead.
+  // adapters not configured here, so the HOT dispatch fails; lead still persisted, DLQ written
+  console.log('[ADAPTER FAILURE] Forced via missing env...');
   const leadsCount = await count('leads');
   if (leadsCount !== 4) fail(`Expected 4 lead rows, got ${leadsCount}`);
 
   if (exitCode === 0) console.log('PASS');
 
-  // -- Summary --
   console.log('');
   if (exitCode === 0) {
-    console.log('=== ALL S03 ACCEPTANCE CRITERIA PASSED ===');
+    console.log('=== ALL ACCEPTANCE CRITERIA PASSED ===');
   } else {
     console.log('=== SOME CHECKS FAILED ===');
     process.exit(1);

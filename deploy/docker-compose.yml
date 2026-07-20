@@ -7,7 +7,7 @@
 services:
   postgres:
     image: postgres:16.4
-    # pinned — bump deliberately
+    # pinned; bump deliberately
     restart: unless-stopped
     env_file: .env.production
     environment:
@@ -26,7 +26,7 @@ services:
 
   n8n:
     image: n8nio/n8n:1.54.0
-    # pinned — bump deliberately; check https://github.com/n8n-io/n8n/releases
+    # pinned; bump deliberately; check https://github.com/n8n-io/n8n/releases
     restart: unless-stopped
     env_file: .env.production
     environment:
@@ -52,7 +52,7 @@ services:
 
   cloudflared:
     image: cloudflare/cloudflared:2025.6.0
-    # pinned — bump deliberately; check https://github.com/cloudflare/cloudflared/releases
+    # pinned; bump deliberately; check https://github.com/cloudflare/cloudflared/releases
     restart: unless-stopped
     env_file: .env.production
     command: tunnel run --token "${TUNNEL_TOKEN}"

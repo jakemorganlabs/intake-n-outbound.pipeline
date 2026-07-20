@@ -14,14 +14,14 @@ async function runMigrations() {
     console.log(`Applying ${file}...`);
     try {
       await pool.query(sql);
-      console.log(`  OK`);
+      console.log('  OK');
     } catch (err) {
       console.error(`  FAILED: ${err instanceof Error ? err.message : String(err)}`);
       process.exit(1);
     }
   }
 
-  console.log(`\nAll migrations applied.`);
+  console.log('\nAll migrations applied.');
   await pool.end();
 }
 

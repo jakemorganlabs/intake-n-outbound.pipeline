@@ -5,7 +5,7 @@ set -euo pipefail
 # External smoke test hitting the production webhook URL.
 # Worked Example B payload (Appendix B of SRS): small business + clear intent.
 # Asserts HTTP 200 and expected response shape via jq.
-# Run from any laptop — no VPS assumptions.
+# Runs from any laptop; no VPS assumptions.
 
 WEBHOOK_URL="https://intake.jakemorganlabs.dev/webhook"
 RESULT=0

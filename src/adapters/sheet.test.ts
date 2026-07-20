@@ -1,5 +1,4 @@
-// Sheet adapter unit tests
-// Traces to: §10.9 Outbound Adapters, FR-RT-3, FR-RT-5
+// Sheets adapter unit test.
 
 import { describe, it, expect } from 'vitest';
 import { dispatchSheet } from './sheet.js';

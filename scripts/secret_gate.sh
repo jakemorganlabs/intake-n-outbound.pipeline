@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# secret_gate.sh — blocks commit if any tracked or staged file contains a secret-like string.
+# secret_gate.sh: blocks commit if any tracked or staged file contains a secret-like string.
 # Exit 0 = clean; exit 1 = blocked.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -46,7 +46,7 @@ scan 'npm_* token'              'npm_[A-Za-z0-9]{36}'
 scan 'AKIA* AWS key'            'AKIA[0-9A-Z]{16}'
 scan 'TUNNEL_TOKEN=ey'          'TUNNEL_TOKEN=ey'
 
-# Real Slack webhook URLs — not the T000/B000 placeholder
+# Real Slack webhook URLs, not the T000/B000 placeholder
 slack_result=$(git grep --no-color -E -I 'hooks\.slack\.com/services/[A-Z0-9]+/[A-Z0-9]+/[a-zA-Z0-9]+' 2>/dev/null \
     | grep -v '\.example' \
     | grep -v 'docs/' \

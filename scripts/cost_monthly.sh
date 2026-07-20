@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Monthly cost aggregation
-# Traces to: §17.4, NFR-CO-1
+# Monthly cost aggregation.
 # Usage: DATABASE_URL=<url> ./scripts/cost_monthly.sh
 
 set -euo pipefail
@@ -55,4 +54,4 @@ echo ""
 echo "--- Price config snapshot ---"
 echo "Rate input: ${RATE_IN_CENTS_PER_1M} cents / 1M tokens"
 echo "Rate output: ${RATE_OUT_CENTS_PER_1M} cents / 1M tokens"
-echo "Verify against current provider pricing if >90 days old."
+echo "Verify against current provider pricing if older than 90 days."

@@ -50,7 +50,7 @@ const CONFIG = {
 };
 
 describe('scoring', () => {
-  // Worked Example B.4 from MICT-PIPE-001
+  // Worked Example B.4
   it('produces composite = 96 for Worked Example B.4', () => {
     const signals: ValidatedSignals = {
       company_size: 'mid',

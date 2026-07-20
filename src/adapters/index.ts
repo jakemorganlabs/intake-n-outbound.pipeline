@@ -1,6 +1,4 @@
-// Adapter index
-// Re-exports all outbound adapters and the DLQ writer for a single import site.
-// Traces to: §10.9 Outbound Adapters, §10.11 Error Workflow
+// Re-export hub for outbound adapters and the DLQ writer.
 
 export { dispatchChatAlert, type ChatDispatchInput } from './chat.js';
 export { dispatchCRM, type CRMDispatchInput } from './crm.js';

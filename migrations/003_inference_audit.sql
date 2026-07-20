@@ -1,5 +1,4 @@
--- Migration 003: inference_audit
--- Traces to: §11.1, §17.2 Inference Audit Record, FR-PS-2
+-- Migration 003: one inference-audit row per model call.
 
 CREATE TABLE IF NOT EXISTS inference_audit (
     audit_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -22,4 +21,4 @@ CREATE INDEX IF NOT EXISTS idx_inference_audit_validation_result ON inference_au
 
 COMMENT ON TABLE inference_audit IS 'One row per model call. Makes model behavior inspectable after the fact.';
 COMMENT ON COLUMN inference_audit.validation_result IS 'passed | failed | repair_succeeded | repair_failed';
-COMMENT ON COLUMN inference_audit.prompt_hash IS 'SHA-256 of the assembled prompt for audit trail';
+COMMENT ON COLUMN inference_audit.prompt_hash IS 'SHA-256 of the assembled prompt; lets us tell if the prompt changed without re-reading the body.';

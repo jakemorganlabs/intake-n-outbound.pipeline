@@ -1,5 +1,4 @@
-# Makefile — MICT-PIPE-001 S05 deployment helpers
-# Targets are thin wrappers around real commands, documented here so the runbook stays single-source.
+# Makefile: thin wrappers around the runbook commands, so the runbook stays single-source.
 
 .PHONY: hooks gate up down logs migrate backup restore-test smoke eval-prod lint test
 
@@ -8,7 +7,7 @@ hooks:
 	@echo "Linking scripts/hooks/pre-commit -> .git/hooks/pre-commit"
 	@ln -sf $(PWD)/scripts/hooks/pre-commit .git/hooks/pre-commit
 
-# Secret gate — run this before every commit
+# Secret gate; run this before every commit
 gate:
 	@bash scripts/secret_gate.sh
 

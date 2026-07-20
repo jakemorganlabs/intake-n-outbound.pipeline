@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Interactive VPS installer for the intake pipeline.
 # Run once after SSHing into a fresh Hetzner (or other Linux) VPS.
-# Creates .env locally on the server — never commits secrets to git.
+# Creates .env locally on the server; never commits secrets to git.
 
 set -euo pipefail
 
@@ -92,7 +92,7 @@ prompt_secret() {
   if [[ "$required" == "true" ]]; then
     echo "(Required)"
   else
-    echo "(Optional — press Enter to skip)"
+    echo "(Optional, press Enter to skip)"
   fi
 
   local value=""
@@ -129,42 +129,42 @@ GOOGLE_SHEET_RANGE="warm_leads!A1"
 EOF
 
 prompt_secret "INFERENCE_API_KEY" \
-  "DeepInfra API key — powers Gemma 4 structured JSON enrichment for each lead." \
+  "DeepInfra API key. Powers Gemma 4 structured JSON enrichment for each lead." \
   "di-..." \
   "true"
 
 prompt_secret "MODEL_API_KEY" \
-  "Model API key alias (optional) — same as INFERENCE_API_KEY if your tooling expects MODEL_API_KEY." \
+  "Model API key alias (optional). Same as INFERENCE_API_KEY if your tooling expects MODEL_API_KEY." \
   "di-..." \
   "false"
 
 prompt_secret "SEARCH_API_KEY" \
-  "Brave Search API key — web research enrichment on the lead's company/domain (fail-open if missing)." \
+  "Brave Search API key. Web research enrichment on the lead's company/domain; fail-open if missing." \
   "BS..." \
   "false"
 
 prompt_secret "WEBHOOK_SECRET" \
-  "Webhook secret — verifies HMAC signatures from your public form (e.g. Tally)." \
+  "Webhook secret. Verifies HMAC signatures from your public form (e.g. Tally)." \
   "a-long-random-string" \
   "true"
 
 prompt_secret "SLACK_WEBHOOK_URL" \
-  "Slack incoming webhook — HOT tier alerts are posted here." \
+  "Slack incoming webhook. HOT tier alerts are posted here." \
   "https://hooks.slack.com/services/T000/B000/XXXX" \
   "false"
 
 prompt_secret "HUBSPOT_API_KEY" \
-  "HubSpot private app token — HOT tier creates CRM contacts." \
+  "HubSpot private app token. HOT tier creates CRM contacts." \
   "pat-na1-..." \
   "false"
 
 prompt_secret "GOOGLE_SHEETS_API_KEY" \
-  "Google Sheets API key — WARM tier appends rows to a spreadsheet." \
+  "Google Sheets API key. WARM tier appends rows to a spreadsheet." \
   "" \
   "false"
 
 prompt_secret "GOOGLE_SHEET_ID" \
-  "Google Sheet ID — target spreadsheet for WARM leads." \
+  "Google Sheet ID. Target spreadsheet for WARM leads." \
   "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms" \
   "false"
 

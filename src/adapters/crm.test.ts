@@ -1,5 +1,4 @@
-// CRM adapter unit tests
-// Traces to: §10.9 Outbound Adapters, FR-RT-2, FR-RT-5
+// HubSpot adapter unit test.
 
 import { describe, it, expect } from 'vitest';
 import { dispatchCRM } from './crm.js';

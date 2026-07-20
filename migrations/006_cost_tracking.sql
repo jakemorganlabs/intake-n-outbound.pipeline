@@ -1,12 +1,9 @@
--- Migration 006: cost tracking on inference_audit
--- Traces to: §17.4, NFR-CO-1
+-- Migration 006: per-call cost tracking on inference_audit.
+-- cost_cents is computed in the pipeline after each call; price_snapshot records the rates used.
 
--- Per-call cost in cents (tokens * rate_in + tokens * rate_out)
--- Recorded by the pipeline after each inference call.
 ALTER TABLE inference_audit
 ADD COLUMN IF NOT EXISTS cost_cents NUMERIC(12,4);
 
--- Price snapshot used at the time of the call
 ALTER TABLE inference_audit
 ADD COLUMN IF NOT EXISTS price_snapshot JSONB;
 

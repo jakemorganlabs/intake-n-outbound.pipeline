@@ -42,7 +42,7 @@ describe('Pipeline', () => {
     await resetTables();
   });
 
-  describe('S01: hmacAndNormalize (FR-IN-3, FR-IN-4)', () => {
+  describe('hmacAndNormalize', () => {
     it('normalizes a valid payload', () => {
       const result = hmacAndNormalize({
         body: { name: 'Dana Reyes', email: 'dreyes@northgate-medical.example', message: 'Hello' },
@@ -69,7 +69,7 @@ describe('Pipeline', () => {
     });
   });
 
-  describe('S01: deriveIdempotencyKey (FR-ID-1)', () => {
+  describe('deriveIdempotencyKey', () => {
     it('uses provider submission id when present', () => {
       const key = deriveIdempotencyKey('abc', 'email@test.com', 'form1', '2026-01-01');
       expect(key).toBe('sub:abc');
@@ -82,7 +82,7 @@ describe('Pipeline', () => {
     });
   });
 
-  describe('S02: webResearch (FR-WR-2, NFR-RE-2)', () => {
+  describe('webResearch', () => {
     it('fails open with degraded when no key', async () => {
       const result = await webResearch('example.com', 'Acme');
       expect(result.status).toBe('degraded');
@@ -91,7 +91,7 @@ describe('Pipeline', () => {
     });
   });
 
-  describe('S02: validationGate (FR-AI-3, FR-AI-4)', () => {
+  describe('validationGate', () => {
     it('accepts valid output', () => {
       const valid = {
         company_size: 'mid',
@@ -138,7 +138,7 @@ describe('Pipeline', () => {
     });
   });
 
-  describe('S01: scoring (FR-SC-1)', () => {
+  describe('scoring', () => {
     it('produces composite 96 for Worked Example B signals', () => {
       const enrichment = {
         company_size: 'mid',
@@ -146,19 +146,18 @@ describe('Pipeline', () => {
         fit_signals: { budget_indicated: true, timeline_urgency: 'high', decision_maker: true, use_case_clarity: 'high' },
         confidence: 0.86,
       };
-      // Search-relevant: industry classification 
       const result = scoring(enrichment);
       expect(result.composite).toBe(96);
       expect(result.components).toBeDefined();
     });
   });
 
-  describe('S01: router (FR-RT-1, FR-RT-4)', () => {
+  describe('router', () => {
     it('routes composite >=70 and confidence >=0.6 as HOT', () => {
       expect(router({ composite: 96, confidence: 0.86 }).tier).toBe('HOT');
     });
 
-    it('caps high score + low confidence at WARM (FR-RT-4)', () => {
+    it('caps high score with low confidence at WARM', () => {
       expect(router({ composite: 96, confidence: 0.5 }).tier).toBe('WARM');
     });
 
@@ -175,7 +174,7 @@ describe('Pipeline', () => {
     });
   });
 
-  describe('S02: end-to-end runPipeline with mocked inference', () => {
+  describe('runPipeline (mocked inference)', () => {
     const mockInference = async (_n: NormalizedLead, _r: WebResearch): Promise<{ result: InferenceResult; error?: string }> => ({
       result: {
         model: 'google/gemma-4-26B-A4B-it',
@@ -206,7 +205,7 @@ describe('Pipeline', () => {
       headers: {},
     };
 
-    it('Worked Example B → lead persisted with composite 96, tier HOT (§B)', async () => {
+    it('persists Worked Example B as composite 96, tier HOT', async () => {
       await resetTables();
       const overrides: PipelineOverrides = { inference: mockInference };
       const result = await runPipeline(workedExampleB, overrides);
@@ -216,16 +215,15 @@ describe('Pipeline', () => {
       expect(result.body.routing).toEqual({ tier: 'HOT', actions: ['chat', 'crm'] });
       const score = result.body.score as { composite?: number } | undefined;
       expect(score?.composite).toBe(96);
-      expect(result.body.degraded).toBe(true); // no search key → degraded but succeeds
+      expect(result.body.degraded).toBe(true); // no search key, degraded but succeeds
 
-      // Verify DB state
       const leadCount = await countRows('leads');
       expect(leadCount).toBe(1);
       const auditCount = await countRows('inference_audit');
       expect(auditCount).toBe(1);
     });
 
-    it('duplicate submission within dedupe window → 200, no second row (FR-ID-2)', async () => {
+    it('idempotent resubmit does not create a second row', async () => {
       const overrides: PipelineOverrides = { inference: mockInference };
       const result1 = await runPipeline(workedExampleB, overrides);
       expect(result1.statusCode).toBe(200);
@@ -233,15 +231,11 @@ describe('Pipeline', () => {
       const result2 = await runPipeline(workedExampleB, overrides);
       expect(result2.statusCode).toBe(200);
 
-      // Only one lead row
       const leadCount = await countRows('leads');
       expect(leadCount).toBe(1);
-
-      // Should be two audit rows (one per run) if we check -- but the dedupe prevents duplicate
-      // Actually the persist logic does ON CONFLICT UPDATE so lead_count stays 1
     });
 
-    it('schema-invalid model response triggers exactly one repair and succeeds', async () => {
+    it('schema-invalid response triggers one repair and still succeeds', async () => {
       await resetTables();
       const repairMock = async (): Promise<{ result: InferenceResult; error?: string }> => ({
         result: {
@@ -268,7 +262,7 @@ describe('Pipeline', () => {
       expect(result.body.repair_used).toBe(true);
     });
 
-    it('double schema-invalid response → MANUAL with lead persisted', async () => {
+    it('double-invalid response routes to MANUAL with the lead still persisted', async () => {
       await resetTables();
       const doubleInvalidMock = async (): Promise<{ result: InferenceResult; error?: string }> => ({
         result: {
@@ -295,7 +289,6 @@ describe('Pipeline', () => {
       const routing = result.body.routing as { tier?: string } | undefined;
       expect(routing?.tier).toBe('MANUAL');
 
-      // Assert lead was persisted even on MANUAL
       const leadCount = await countRows('leads');
       expect(leadCount).toBe(1);
       const auditCount = await countRows('inference_audit');

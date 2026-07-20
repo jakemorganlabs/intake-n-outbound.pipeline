@@ -1,10 +1,9 @@
-// CLI entry point
+// CLI: pipe a JSON lead into stdin, get the pipeline result on stdout.
 // Usage: npx tsx src/cli.ts < payload.json
 
 import { runPipeline, type PipelineInput } from './pipeline.js';
 
 async function main() {
-  // Read JSON from stdin
   let raw = '';
   process.stdin.setEncoding('utf-8');
   for await (const chunk of process.stdin) {

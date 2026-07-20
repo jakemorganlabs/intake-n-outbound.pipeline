@@ -1,5 +1,4 @@
-// HTTP webhook entry point for the Intake Pipeline
-// HTTP server for the intake pipeline
+// HTTP webhook entry for the intake pipeline.
 
 import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
@@ -17,13 +16,12 @@ app.post('/intake-webhook', async (c) => {
   return c.json(result.body as Record<string, unknown>, result.statusCode as 200 | 400 | 401 | 503);
 });
 
-// Health check
 app.get('/health', async (c) => {
   return c.json({ status: 'ok' });
 });
 
 const startedAt = new Date().toISOString();
-console.log(`[${startedAt}] Intake Pipeline Server started`);
+console.log(`[${startedAt}] intake pipeline server started`);
 console.log(`POST http://localhost:${PORT}/intake-webhook`);
 console.log(`GET  http://localhost:${PORT}/health`);
 

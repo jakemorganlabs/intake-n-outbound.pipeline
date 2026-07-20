@@ -1,5 +1,4 @@
-// Spreadsheet adapter (Google Sheets append via service account)
-// Traces to: §10.9 Outbound Adapters, FR-RT-3, FR-RT-5
+// Google Sheets append adapter. WARM tier writes one row per lead.
 
 import 'dotenv/config';
 import { withRetry, isRetryableHttp } from './retry.js';

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Smoke test for Sessions S02 and S03 - Orchestration Spine + Adapters & Error Workflow
-# Posts labeled payloads and asserts end-to-end correctness per tier.
+# Smoke test. Posts labeled payloads and asserts end-to-end correctness per tier.
 # Usage: ./scripts/smoke.sh [tier=all|hot|warm|cold|manual|chaos]
 set -euo pipefail
 

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Metrics reporter for MICT-PIPE-001
-# Traces to: §17.3, NFR-OB-2
+# Metrics reporter.
 # Usage: DATABASE_URL=<url> ./scripts/metrics.sh
 
 set -euo pipefail

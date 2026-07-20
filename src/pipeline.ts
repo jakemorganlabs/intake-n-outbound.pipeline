@@ -1,14 +1,13 @@
 /**
- * Full pipeline orchestration spine.
- * Invariant: Every lead flows through exactly the same ordered stages, and every stage's output
- * is fully defined before the next stage runs. The model is allowed one call; its output is
- * validated against a strict schema before reaching scoring/router. On any failure short of
- * total system collapse, the lead is persisted and routed to a safe tier.
- * This module deliberately does NOT include business logic inside try/catch wrappers;
- * scoring and routing are delegated to pure, unit-tested functions.
+ * Pipeline orchestration spine. Every lead runs through the same ordered
+ * stages; each stage's output is fixed before the next stage runs. The model
+ * gets one structured call; its output is schema-validated before it can
+ * reach scoring or routing. On any non-total failure the lead is still
+ * persisted and routed to a safe tier.
+ *
+ * Scoring and routing are pure, unit-tested functions called from here;
+ * they are not inlined into try/catch wrappers, so the spine stays thin.
  */
-
-// Full pipeline: ingestion -> HMAC -> normalize -> dedupe -> research -> inference -> gate -> scoring -> router -> persist -> dispatch
 
 import { createHash, createHmac } from 'crypto';
 import { readFileSync } from 'fs';
@@ -17,15 +16,12 @@ import { fileURLToPath } from 'url';
 import { logExecution, generateExecutionId } from './logger.js';
 import { recordMetric } from './metrics.js';
 
-// Need AJV for schema validation in the gate
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 import AjvModule from 'ajv/dist/2020.js';
 import addFormatsModule from 'ajv-formats';
 
-// Env loading
 import 'dotenv/config';
 
-// - Adapters -------------------------------
 import {
   dispatchChatAlert,
   dispatchCRM,
@@ -35,7 +31,6 @@ import {
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
-// - Config -----------------------------
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || 'change-me-in-production';
 const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/intake_pipeline';
 const MODEL_API_KEY = process.env.MODEL_API_KEY || process.env.INFERENCE_API_KEY || '';
@@ -43,7 +38,6 @@ const MODEL_ID = process.env.MODEL_ID || 'google/gemma-4-26B-A4B-it';
 const INFERENCE_BASE_URL = process.env.INFERENCE_BASE_URL || 'https://api.deepinfra.com/v1/openai';
 const SEARCH_API_KEY = process.env.SEARCH_API_KEY || '';
 
-// - Types ------------------------------
 export interface PipelineInput {
   body: Record<string, unknown>;
   headers?: Record<string, string>;
@@ -103,11 +97,11 @@ export interface AdapterDispatchResult {
   error?: string;
 }
 
-// - Stage 1: HMAC + Normalizer -------------------
+// Stage 1: HMAC + normalize
 export function hmacAndNormalize(payload: PipelineInput): { normalized: NormalizedLead; response?: PipelineOutput } {
   const body = payload.body;
 
-  // HMAC check (optional -- if header present)
+  // HMAC only when the header is present.
   const signature = payload.headers?.['x-webhook-signature'] || (payload.headers?.['X-Webhook-Signature']);
   const sigStr = String(signature || '').toLowerCase().trim();
   if (sigStr) {
@@ -115,7 +109,7 @@ export function hmacAndNormalize(payload: PipelineInput): { normalized: Normaliz
     const expected = createHmac('sha256', WEBHOOK_SECRET)
       .update(rawBody)
       .digest('hex');
-    // Use timing-safe comparison
+    // timing-safe comparison
     let mismatch = false;
     if (expected.length !== sigStr.length) mismatch = true;
     try {
@@ -171,7 +165,7 @@ export function hmacAndNormalize(payload: PipelineInput): { normalized: Normaliz
   return { normalized };
 }
 
-// - Stage 2: Idempotency Guard -------------------
+// Stage 2: idempotency key derivation
 export function deriveIdempotencyKey(providerSubmissionId: string | null, email: string, formId: string, submittedAt: string): string {
   if (providerSubmissionId) {
     return `sub:${providerSubmissionId}`;
@@ -181,11 +175,10 @@ export function deriveIdempotencyKey(providerSubmissionId: string | null, email:
   return `drv:${hash}`;
 }
 
-// - Stage 3: Research Adapter (fail-open) --------------
+// Stage 3: web research. Fail-open; a degraded lead is better than a dropped one.
 export async function webResearch(domain: string | null, company: string | null): Promise<WebResearch> {
   const start = Date.now();
 
-  // Fail-open: if no key or no domain, return degraded
   if (!SEARCH_API_KEY || !domain) {
     return {
       status: 'degraded',
@@ -198,7 +191,7 @@ export async function webResearch(domain: string | null, company: string | null)
   }
 
   try {
-    // Brave Search API (free tier available)
+    // Brave Search API (free tier)
     const query = encodeURIComponent(company ? `${company} ${domain}` : domain);
     const response = await fetch(`https://api.search.brave.com/res/v1/web/search?q=${query}&count=3`, {
       method: 'GET',
@@ -248,11 +241,11 @@ export async function webResearch(domain: string | null, company: string | null)
   }
 }
 
-// - Stage 4: Contained Inference ------------------
+// Stage 4: contained inference. One structured call to the model.
 function extractFirstJsonObject(text: string): Record<string, unknown> | null {
-  // Locate the first '{' and walk to its matching '}' with a brace-depth counter
-  // that respects string literals and escapes. This is immune to thought preambles,
-  // empty thought blocks, and markdown fences.
+  // Walk from the first '{' to its matching '}' with a brace-depth counter that
+  // respects string literals and escapes. Survives thought preambles, markdown
+  // fences, and other wrapper noise the model may add despite instructions.
   const idx = text.indexOf('{');
   if (idx === -1) return null;
   let depth = 0;
@@ -348,8 +341,8 @@ Rules:
     const finishReason = choices[0]?.finish_reason;
     const rawText = message?.content || '';
 
-    // If the model stopped because of length, the JSON object may be truncated.
-    // Treat that as a validation-gate failure later, not a parse crash here.
+    // If the model stopped for length, the JSON may be truncated. Let the
+    // validation gate catch it rather than crashing the parse here.
     let raw: Record<string, unknown> | null = null;
     if (rawText) {
       raw = extractFirstJsonObject(rawText);
@@ -372,7 +365,7 @@ Rules:
   }
 }
 
-// - Stage 5: Validation Gate + One-Shot Repair ----------
+// Stage 5: validation gate + one-shot repair
 export interface ValidationGateResult {
   valid: boolean;
   enrichment?: Record<string, unknown>;
@@ -400,20 +393,18 @@ export function validationGate(raw: Record<string, unknown> | null): ValidationG
     return { valid: false, repair_used: false, original_errors: [{ message: 'no_model_output' }] };
   }
 
-  // First attempt
   const first = validateOutput(raw);
   if (first.valid) {
     return { valid: true, enrichment: raw as Record<string, unknown>, repair_used: false };
   }
 
-  // One repair attempt
+  // One repair attempt, then MANUAL.
   const repaired = attemptRepair(raw);
   const second = validateOutput(repaired);
   if (second.valid) {
     return { valid: true, enrichment: repaired, repair_used: true, original_errors: first.errors };
   }
 
-  // Terminal: both attempts failed
   return { valid: false, repair_used: true, original_errors: first.errors };
 }
 
@@ -425,12 +416,10 @@ function attemptRepair(obj: Record<string, unknown>): Record<string, unknown> {
   if ((fixed.confidence as number) < 0) fixed.confidence = 0;
   if ((fixed.confidence as number) > 1) fixed.confidence = 1;
 
-  // required fields
   if (!fixed.company_size) fixed.company_size = 'unknown';
   if (!fixed.industry) fixed.industry = 'unknown';
   if (!fixed.summary) fixed.summary = 'No summary available';
 
-  // fit_signals
   if (!fixed.fit_signals || typeof fixed.fit_signals !== 'object') {
     fixed.fit_signals = { budget_indicated: null, timeline_urgency: 'low', decision_maker: null, use_case_clarity: 'low' };
   }
@@ -438,7 +427,7 @@ function attemptRepair(obj: Record<string, unknown>): Record<string, unknown> {
   const requiredSignals = ['budget_indicated', 'timeline_urgency', 'decision_maker', 'use_case_clarity'];
   for (const s of requiredSignals) {
     if (!(s in fit)) {
-      // Default values that pass strict schema validation
+      // defaults chosen to pass strict schema validation
       fit[s] = s === 'budget_indicated' || s === 'decision_maker'
         ? null
         : s === 'use_case_clarity' ? 'low'
@@ -450,7 +439,7 @@ function attemptRepair(obj: Record<string, unknown>): Record<string, unknown> {
   return fixed;
 }
 
-// - Stage 6: Scoring (reuses S01 config) --------------
+// Stage 6: scoring (reuses config/scoring.json)
 export function scoring(enrichment: Record<string, unknown>): ScoreResult {
   const configPath = resolve(__dirname, '../config/scoring.json');
   const config = JSON.parse(readFileSync(configPath, 'utf-8'));
@@ -507,9 +496,9 @@ export function scoring(enrichment: Record<string, unknown>): ScoreResult {
   };
 }
 
-// - Stage 7: Router ------------------------
+// Stage 7: router
 export function router(input: { composite: number; confidence: number; inference_failed?: boolean }): RoutingResult {
-  // MANUAL override for exhausted inference repair
+  // inference repair exhausted -> MANUAL, never auto-fire
   if (input.inference_failed) {
     return { tier: 'MANUAL', actions: ['dlq', 'alert'] };
   }
@@ -525,7 +514,7 @@ export function router(input: { composite: number; confidence: number; inference
   return { tier: 'COLD', actions: ['log'] };
 }
 
-// - Stage 8: Persistence ----------------------
+// Stage 8: persistence
 export async function persist(
   idempotencyKey: string,
   normalized: NormalizedLead,
@@ -544,14 +533,13 @@ export async function persist(
     await client.connect();
     await client.query('BEGIN');
 
-    // Dedupe insert (atomic -- will throw on conflict if already exists)
-    await client.query(
+// atomic dedupe insert; conflicts are no-ops
+  await client.query(
       'INSERT INTO dedupe (idempotency_key, created_at) VALUES ($1, NOW()) ON CONFLICT (idempotency_key) DO NOTHING',
       [idempotencyKey]
     );
 
-    // Insert lead
-    const leadSql = `INSERT INTO leads
+  const leadSql = `INSERT INTO leads
       (idempotency_key, status, source, raw_submission, normalized, web_research, enrichment, score, routing, errors)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
       ON CONFLICT (idempotency_key) DO UPDATE SET
@@ -578,17 +566,17 @@ export async function persist(
 
     const leadId = leadResult.rows[0].lead_id as string;
 
-    // Insert inference audit (with cost tracking)
+    // Insert inference audit row with cost tracking
     let auditId: string | undefined;
     let costCents: number | null = null;
     if (inference) {
-      // Load pricing config per §17.4
+      // pricing config; see config/pricing.json
       const pricingPath = resolve(__dirname, '../config/pricing.json');
       let pricing: { rate_input_cents_per_1m_tokens: number; rate_output_cents_per_1m_tokens: number; model: string; recorded_at: string } = { rate_input_cents_per_1m_tokens: 25, rate_output_cents_per_1m_tokens: 125, model: MODEL_ID, recorded_at: 'unknown' };
       try {
         pricing = JSON.parse(readFileSync(pricingPath, 'utf-8'));
       } catch {
-        // Fallback to default rates
+        // fall back to default rates
       }
       const rateIn = pricing.rate_input_cents_per_1m_tokens / 1_000_000;
       const rateOut = pricing.rate_output_cents_per_1m_tokens / 1_000_000;
@@ -635,7 +623,7 @@ export interface PipelineOverrides {
   inference?: (normalized: NormalizedLead, research: WebResearch) => Promise<{ result: InferenceResult; error?: string }>;
 }
 
-// - Stage 9: Dispatch outbound adapters ----
+// Stage 9: dispatch outbound adapters per tier
 async function dispatchAdapters(
   leadId: string,
   idempotencyKey: string,
@@ -647,14 +635,13 @@ async function dispatchAdapters(
   validation: ValidationGateResult,
   status: string
 ): Promise<Array<{ ok: boolean; adapter: string; latencyMs: number; error?: string }>> {
-  // Only dispatch for routed leads (not MANUAL or inference_failed)
+  // only dispatched for routed leads; MANUAL and inference_failed skip
   if (status !== 'routed' || !enrichment || !score) {
     return [];
   }
 
   const results: Array<{ ok: boolean; adapter: string; latencyMs: number; error?: string }> = [];
 
-  // HOT: chat + CRM
   if (routing.tier === 'HOT') {
     const chatResult = await dispatchChatAlert({
       leadId,
@@ -682,7 +669,7 @@ async function dispatchAdapters(
     results.push({ ok: crmResult.ok, adapter: 'crm', latencyMs: crmResult.latencyMs, error: crmResult.error });
   }
 
-  // WARM: sheet append
+  // WARM: sheet only
   if (routing.tier === 'WARM') {
     const sheetResult = await dispatchSheet({
       leadId,
@@ -701,7 +688,6 @@ async function dispatchAdapters(
   return results;
 }
 
-// - Main Pipeline -------------------------
 export async function runPipeline(payload: PipelineInput, overrides?: PipelineOverrides): Promise<PipelineOutput> {
   const executionId = generateExecutionId();
   const startTime = Date.now();
@@ -717,7 +703,7 @@ export async function runPipeline(payload: PipelineInput, overrides?: PipelineOv
   if (stage1.response) return stage1.response;
   const normalized = stage1.normalized;
 
-  // Stage 2: derive key
+  // Stage 2
   const idempotencyKey = deriveIdempotencyKey(
     normalized.submission_id,
     normalized.email,
@@ -726,16 +712,16 @@ export async function runPipeline(payload: PipelineInput, overrides?: PipelineOv
   );
   mark('idempotency');
 
-  // Stage 3: Research
+  // Stage 3
   const research = await webResearch(normalized.domain, normalized.company);
   mark('research');
 
-  // Stage 4: Inference (allow override for testing)
+  // Stage 4: inference (overrides used by tests to avoid a live model call)
   const inferenceFn = overrides?.inference ?? containedInference;
   const inferenceResult = await inferenceFn(normalized, research);
   mark('inference');
   if (inferenceResult.error) {
-    // Even on inference failure, persist and return
+    // persist even on inference failure; never drop the lead
     const status = 'inference_failed';
     const routing: RoutingResult = { tier: 'MANUAL', actions: ['dlq', 'alert'] };
     const { leadId } = await persist(
@@ -747,7 +733,6 @@ export async function runPipeline(payload: PipelineInput, overrides?: PipelineOv
 
     recordMetric('dlq_total', { lead_id: leadId, tier: routing.tier, reason: 'inference_failed' }).catch(()=>{});
 
-    // Write DLQ and alert for MANUAL
     await writeDeadLetter({
       leadSnapshot: {
         lead_id: leadId,
@@ -760,7 +745,6 @@ export async function runPipeline(payload: PipelineInput, overrides?: PipelineOv
       error: `Inference failed: ${inferenceResult.error}`,
     });
 
-    // Alert
     try {
       await dispatchChatAlert({
         leadId,
@@ -772,10 +756,9 @@ export async function runPipeline(payload: PipelineInput, overrides?: PipelineOv
         email: normalized.email,
       });
     } catch {
-      // Alert failure is non-fatal
+      // alert failure is non-fatal
     }
 
-    // Emit structured log on inference failure path
     logExecution({
       execution_id: executionId,
       lead_id: leadId,
@@ -791,18 +774,18 @@ export async function runPipeline(payload: PipelineInput, overrides?: PipelineOv
     return { statusCode: 200, body: { status, idempotency_key: idempotencyKey, lead_id: leadId, error: inferenceResult.error, latency_ms: Date.now() - startTime } };
   }
 
-  // Stage 5: Validation Gate
+  // Stage 5
   const validation = validationGate(inferenceResult.result.raw_output);
   mark('validation_gate');
 
-  // Stage 6: Scoring
+  // Stage 6
   let score: ScoreResult | null = null;
   if (validation.valid && validation.enrichment) {
     score = scoring(validation.enrichment);
   }
   mark('scoring');
 
-  // Stage 7: Router
+  // Stage 7
   const confidence = validation.valid && validation.enrichment
     ? (validation.enrichment.confidence as number) || 0
     : 0;
@@ -811,7 +794,7 @@ export async function runPipeline(payload: PipelineInput, overrides?: PipelineOv
   const routing = router({ composite, confidence, inference_failed: inferenceFailed });
   mark('routing');
 
-  // Persist FIRST -- always
+  // persist first; the lead record always exists even if everything else fails
   const status = inferenceFailed ? 'inference_failed' : 'routed';
   const enrichment = validation.valid && validation.enrichment ? validation.enrichment : null;
   const { leadId, auditId } = await persist(
@@ -820,14 +803,13 @@ export async function runPipeline(payload: PipelineInput, overrides?: PipelineOv
   );
   mark('persist');
 
-  // Metrics counters per §17.3 NFR-OB-2
   recordMetric('leads_total', { lead_id: leadId, tier: routing.tier }).catch(() => {});
   recordMetric('leads_by_tier', { lead_id: leadId, tier: routing.tier }).catch(() => {});
   if (research.degraded) recordMetric('search_degraded', { lead_id: leadId }).catch(() => {});
   if (validation.repair_used) recordMetric('repair_used', { lead_id: leadId }).catch(() => {});
   if (!validation.valid) recordMetric('gate_failures_total', { lead_id: leadId }).catch(() => {});
 
-  // Stage 8: Dispatch outbound adapters
+  // Stage 9
   let dispatchResults: Array<{ ok: boolean; adapter: string; latencyMs: number; error?: string }> = [];
   if (status === 'routed' && enrichment && score) {
     dispatchResults = await dispatchAdapters(
@@ -837,7 +819,7 @@ export async function runPipeline(payload: PipelineInput, overrides?: PipelineOv
   }
   mark('dispatch');
 
-  // If any dispatch failed, dead-letter the action and update status
+  // any failed dispatch -> DLQ the action and update status, lead record stays
   const failed = dispatchResults.filter(r => !r.ok);
   if (failed.length > 0) {
     recordMetric('dlq_total', { lead_id: leadId, tier: routing.tier, reason: 'dispatch_failure' }).catch(()=>{});
@@ -857,7 +839,7 @@ export async function runPipeline(payload: PipelineInput, overrides?: PipelineOv
         errorDetail: { adapter: f.adapter, latency_ms: f.latencyMs },
       });
     }
-    // Alert via chat
+    // chat alert on dispatch failure
     try {
       await dispatchChatAlert({
         leadId,
@@ -869,13 +851,13 @@ export async function runPipeline(payload: PipelineInput, overrides?: PipelineOv
         email: normalized.email,
       });
     } catch {
-      // Non-fatal
+      // non-fatal
     }
   }
 
   const latencyMs = Date.now() - startTime;
 
-  // Emit structured log per §17.1 NFR-OB-1
+  // structured execution log
   logExecution({
     execution_id: executionId,
     lead_id: leadId,

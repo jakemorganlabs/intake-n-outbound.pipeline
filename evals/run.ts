@@ -1,7 +1,9 @@
-// Eval runner for MICT-PIPE-001-S04
-// Reads fixtures, posts to dev webhook, polls DB, asserts against labels.
+// Eval runner. Posts fixtures to the webhook, polls the DB, asserts each row
+// against its label, writes a markdown report. EVAL_ENV=prod points at the
+// live instance; otherwise posts to localhost.
+//
 // Usage: npm run eval [-- <category>]
-//   <category> optional: schema | routing | idempotency | degradation | injection | gibberish | multilingual
+//   category: schema | routing | idempotency | degradation | injection | gibberish | multilingual
 
 import { readFileSync, readdirSync, statSync, writeFileSync } from 'fs';
 import { join, dirname, resolve } from 'path';
@@ -78,7 +80,7 @@ function deriveIdempotencyKey(payload: Record<string, unknown>): string {
   const sid = (payload.submission_id as string) || null;
   const prefix = IS_PROD_EVAL ? 'eval_' : '';
   if (sid) return `${prefix}sub:${sid}`;
-  // Fallback for fixtures that omit submission_id (none in current eval set)
+  // no current fixture omits submission_id, but keep a stable fallback
   return `${prefix}drv:unknown`;
 }
 
@@ -106,7 +108,7 @@ async function postFixture(payload: Record<string, unknown>): Promise<{
 }
 
 async function pollLead(client: Client, idempotencyKey: string): Promise<Record<string, unknown> | null> {
-  // Poll up to 20 times, 500ms apart --> max 10s
+  // up to 20 polls, 500ms apart = 10s ceiling
   for (let i = 0; i < 20; i++) {
     const result = await client.query(
       'SELECT * FROM leads WHERE idempotency_key = $1',
@@ -133,34 +135,28 @@ async function runFixture(
 
   const startTotal = Date.now();
 
-  // Post to webhook
   const { statusCode, body, latencyMs } = await postFixture(payload);
 
-  // Check immediate HTTP status
   if (statusCode !== 200) {
     errors.push(`HTTP ${statusCode} instead of 200`);
   }
 
-  // Poll DB for the row
   const leadRow = await pollLead(client, idempotencyKey);
   if (!leadRow) {
     errors.push('No lead row found in DB after polling');
   }
 
-  // Check status
   const status = String((body?.status ?? leadRow?.status ?? ''));
   if (status !== label.expected_status) {
     errors.push(`Status: expected ${label.expected_status}, got ${status}`);
   }
 
-  // Check tier
   const routing = (body?.routing ?? leadRow?.routing) as Record<string, unknown> | undefined;
   const tier = routing ? String(routing.tier ?? '') : String(body?.tier ?? '');
   if (tier !== label.tier_should_be) {
     errors.push(`Tier: expected ${label.tier_should_be}, got ${tier}`);
   }
 
-  // Check degraded flag
   const degraded = (body?.degraded ?? leadRow?.degraded) as boolean | undefined;
   if (label.degraded !== undefined) {
     if (!!degraded !== label.degraded) {
@@ -168,17 +164,15 @@ async function runFixture(
     }
   }
 
-  // Check repair_used
   const bodyRepair = (body?.repair_used ?? undefined) as boolean | undefined;
   if (bodyRepair !== undefined && bodyRepair !== label.repair_used) {
     errors.push(`Repair: expected ${label.repair_used}, got ${bodyRepair}`);
   }
 
-  // For idempotency fixtures, verify duplicate detection across the pair.
+  // for idempotency pairs, the second post must reuse the same lead_id
   const leadId = String(body?.lead_id ?? leadRow?.lead_id ?? '');
   if (label.idempotent !== undefined) {
     if (seenKeys.has(idempotencyKey)) {
-      // This is a duplicate submission; should return same lead_id.
       const prev = seenKeys.get(idempotencyKey)!;
       if (leadId && prev.leadId !== leadId) {
         errors.push(
@@ -186,7 +180,6 @@ async function runFixture(
         );
       }
     } else {
-      // First time we see this key; store leadId.
       if (leadId) {
         seenKeys.set(idempotencyKey, { leadId, rowCount: 0 });
       }
@@ -206,15 +199,12 @@ async function runFixture(
 async function main() {
   const categoryFilter = process.argv[2];
 
-  // Connect to DB
   const client = new Client({ connectionString: DATABASE_URL });
   await client.connect();
 
   try {
-    // Reset eval environment
     await resetTables(client);
 
-    // Load fixtures
     const pairs = loadFixtures(categoryFilter);
     console.log(`Loaded ${pairs.length} fixture pairs`);
 
@@ -238,9 +228,8 @@ async function main() {
       }
     }
 
-    // Generate report
     const reportLines: string[] = [
-      '# Eval Report — MICT-PIPE-001',
+      '# Eval Report',
       '',
       `Generated: ${nowISO()}`,
       `Total fixtures: ${pairs.length}`,
@@ -264,7 +253,6 @@ async function main() {
     reportLines.push(`| **Total** | **${totalPass}** | **${totalFail}** |`);
     reportLines.push('');
 
-    // Failure detail table
     const failures = results.filter(r => !r.passed);
     if (failures.length > 0) {
       reportLines.push('## Failures');
@@ -277,7 +265,6 @@ async function main() {
       reportLines.push('');
     }
 
-    // Passed list
     reportLines.push('## Passed Fixtures');
     reportLines.push('');
     for (const cat of Object.keys(byCategory).sort()) {

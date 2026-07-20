@@ -1,6 +1,4 @@
-# Eval Report -- MICT-PIPE-001 (Local)
-
-Generated during Session S04.
+# Eval Report (Local)
 
 > Full report: `evals/report.md` on the branch that generated it.
 
@@ -17,4 +15,4 @@ Generated during Session S04.
 | multilingual | 4 | 0 |
 | **Total** | **33** | **0** |
 
-All 33 fixtures passed. The S04 eval gate is green.
+All 33 fixtures pass

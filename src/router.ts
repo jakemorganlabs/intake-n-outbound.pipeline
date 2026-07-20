@@ -1,9 +1,9 @@
 /**
- * Confidence-aware tier router.
- * Invariant: Tier assignment is a pure function of (composite, confidence, inference_failed).
- * A high composite paired with low model confidence is capped at WARM, never auto-fired to HOT.
- * MANUAL tier is reserved for validation-gate failures (double repair or no output).
- * This module deliberately does NOT adapt thresholds per customer; config-driven only.
+ * Confidence-aware tier router. Tier assignment is a pure function of
+ * (composite, confidence, inference_failed). A high composite with low
+ * confidence caps at WARM, never auto-fires to HOT. MANUAL is reserved for
+ * validation-gate failures (double repair or no output). Thresholds are
+ * fixed here, not config-driven.
  */
 export type Tier = 'HOT' | 'WARM' | 'COLD' | 'MANUAL';
 
@@ -19,7 +19,7 @@ export interface RouterInput {
 }
 
 export function router(input: RouterInput): RoutingResult {
-  // MANUAL override for exhausted inference repair
+  // gate exhausted -> MANUAL, never auto-fire
   if (input.inference_failed) {
     return { tier: 'MANUAL', actions: ['dlq', 'alert'] };
   }

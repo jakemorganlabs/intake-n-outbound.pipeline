@@ -35,7 +35,7 @@ sleep 3
 # Run pg_restore inside the scratch container
 docker exec "$SCRATCH" pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --clean /tmp/pipe.dump
 
-# Sanity check — SELECT count(*)
+# Sanity check: SELECT count(*)
 LEAD_COUNT=$(docker exec "$SCRATCH" psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "SELECT count(*) FROM leads;")
 
 docker rm -f "$SCRATCH" >/dev/null 2>&1

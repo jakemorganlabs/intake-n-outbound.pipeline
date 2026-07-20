@@ -1,5 +1,4 @@
-// Dead-letter (DLQ) writer
-// Traces to: §10.11 Error Workflow / Dead-Letter Handler, FR-ER-1, FR-RT-5
+// Dead-letter writer. Captures a lead snapshot plus the failing stage and error.
 
 import { pool } from '../db/index.js';
 
