@@ -109,5 +109,7 @@ Sibling repos: `document-intelligence-rag` (II), `shovels_n8n_nodes` (III), `rec
 
 ## Author
 
-jakemorganlabs
-portfolio · linkedin · contact: see profile
+**jakemorganlabs**
+- Portfolio: https://jakemorganlabs.dev
+- LinkedIn: https://www.linkedin.com/in/jakemorganlabs
+- Contact: jakemorganlabs@gmail.com
