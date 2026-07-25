@@ -46,10 +46,8 @@ export async function dispatchCRM(input: CRMDispatchInput): Promise<AdapterResul
             firstname: input.name.split(' ')[0] || input.name,
             lastname: input.name.split(' ').slice(1).join(' ') || '',
             company: input.company || input.domain || '',
-            hs_external_id: input.idempotencyKey,
             lifecyclestage: 'lead',
             lead_source: 'intake_pipeline_webhook',
-            notes_last_updated: new Date().toISOString(),
           },
         }),
       });

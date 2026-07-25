@@ -33,6 +33,8 @@ function adaptTally(raw: any): any {
 app.post('/intake-webhook', async (c) => {
   const raw = await c.req.json().catch(() => ({}));
   const body = adaptTally(raw);
+  console.log("RAW:", JSON.stringify(raw));
+  console.log("ADAPTED:", JSON.stringify(body));
   const headers: Record<string, string> = {};
   c.req.raw.headers.forEach((v, k) => { headers[k] = v; });
 
