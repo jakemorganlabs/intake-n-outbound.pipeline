@@ -39,4 +39,7 @@ jobs:
             echo "Applying $f"
             psql "$DATABASE_URL" -f "$f"
           done
-      - run: npm test
+      - name: Run tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/intake_pipeline
+        run: npm test
