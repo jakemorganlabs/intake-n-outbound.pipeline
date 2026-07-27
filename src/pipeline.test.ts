@@ -34,7 +34,8 @@ async function countRows(table: string): Promise<number> {
 }
 
 describe('Pipeline', () => {
-  beforeAll(async () => {
+  let _prevSearchKey: string | undefined;
+beforeAll(async () => {
     await resetTables();
   });
 
